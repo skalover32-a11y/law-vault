@@ -1,0 +1,67 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-law_vault}
+      POSTGRES_USER: ${POSTGRES_USER:-law_vault}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-law_vault}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio123}
+    volumes:
+      - ./data/minio:/data
+
+  minio-init:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: /bin/sh -c "sleep 3; mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD; mc mb -p local/$$S3_BUCKET; exit 0"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio123}
+      S3_BUCKET: ${S3_BUCKET:-uploads}
+
+  api:
+    build:
+      context: ./api
+    env_file:
+      - ./.env
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    command: ["/bin/sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+
+  worker:
+    build:
+      context: ./api
+    env_file:
+      - ./.env
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    command: ["/bin/sh", "-c", "alembic upgrade head && python -m app.worker"]
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./web:/usr/share/nginx/html:ro

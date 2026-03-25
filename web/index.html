@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Портал — Загрузка</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div class="hero-brand">Портал</div>
+      <button id="themeToggle" class="btn btn-secondary btn-compact" type="button">Тема</button>
+      <h1>Передача файла</h1>
+      <p class="muted">Откройте ссылку для передачи.</p>
+    </header>
+
+    <section class="card">
+      <div id="tokenBanner" class="banner hidden"></div>
+
+      <div id="dropZone" class="dropzone">
+        <div class="dropzone-inner">
+          <div class="dropzone-title">Перетащите файл сюда</div>
+          <div class="dropzone-sub">или выберите файл вручную</div>
+          <input id="fileInput" type="file" multiple />
+          <div id="fileCount" class="file-count">Файлы не выбраны</div>
+        </div>
+      </div>
+
+      <div class="progress" id="progressWrap">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+
+      <div class="actions">
+        <button id="uploadBtn" class="btn" disabled>Загрузка</button>
+      </div>
+
+      <div id="status" class="status"></div>
+      <div id="fileList" class="file-list"></div>
+    </section>
+  </main>
+
+  <script src="/theme.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
