@@ -538,7 +538,8 @@ p {
 .transfer-rail,
 .admin-panel,
 .security details {
-  padding: 22px;
+  padding: 0;
+  overflow: hidden;
 }
 
 .transfer-stage-head {
@@ -882,10 +883,25 @@ p {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  padding: 18px 22px;
   cursor: pointer;
   list-style: none;
   color: var(--ink);
   font-weight: 600;
+  user-select: none;
+  transition: background-color 0.18s ease;
+}
+
+.security summary:hover,
+.security summary:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.theme-dark .security summary:hover,
+.theme-dark .security summary:focus-visible {
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .security summary::-webkit-details-marker {
@@ -907,7 +923,8 @@ p {
 }
 
 .security-body {
-  margin-top: 16px;
+  margin-top: 0;
+  padding: 0 22px 22px;
   color: var(--ink-soft);
   font-size: 0.93rem;
 }
