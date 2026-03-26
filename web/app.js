@@ -13,7 +13,10 @@ let uploadToken = null;
 
 function showStatus(message, isError = false) {
   statusEl.textContent = message;
-  statusEl.style.color = isError ? "#a02f2f" : "#134638";
+  statusEl.classList.remove("is-error", "is-success");
+  if (message) {
+    statusEl.classList.add(isError ? "is-error" : "is-success");
+  }
 }
 
 function setProgress(percent) {

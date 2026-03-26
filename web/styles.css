@@ -14,6 +14,12 @@
   --accent-soft: rgba(190, 154, 104, 0.14);
   --success: #1d6c57;
   --danger: #9a3b3b;
+  --status-success-bg: rgba(190, 154, 104, 0.12);
+  --status-success-line: rgba(181, 144, 91, 0.28);
+  --status-success-text: #2b2419;
+  --status-error-bg: rgba(154, 59, 59, 0.1);
+  --status-error-line: rgba(154, 59, 59, 0.24);
+  --status-error-text: #7e2e2e;
   --radius-xl: 34px;
   --radius-lg: 24px;
   --radius-md: 18px;
@@ -36,6 +42,12 @@
   --accent-soft: rgba(181, 154, 117, 0.14);
   --success: #7ab39d;
   --danger: #d48787;
+  --status-success-bg: rgba(181, 154, 117, 0.14);
+  --status-success-line: rgba(210, 187, 151, 0.24);
+  --status-success-text: #f0ece5;
+  --status-error-bg: rgba(212, 135, 135, 0.12);
+  --status-error-line: rgba(212, 135, 135, 0.24);
+  --status-error-text: #ffd6d6;
   --shadow-soft: 0 24px 68px rgba(0, 0, 0, 0.34);
 }
 
@@ -342,9 +354,37 @@ p {
 }
 
 .status {
-  min-height: 22px;
-  color: var(--success);
+  min-height: 0;
+  color: var(--ink-soft);
   font-size: 0.95rem;
+}
+
+.status:empty {
+  display: none;
+}
+
+.status:not(:empty) {
+  display: block;
+  padding: 13px 15px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.theme-dark .status:not(:empty) {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.status.is-success {
+  color: var(--status-success-text);
+  border-color: var(--status-success-line);
+  background: var(--status-success-bg);
+}
+
+.status.is-error {
+  color: var(--status-error-text);
+  border-color: var(--status-error-line);
+  background: var(--status-error-bg);
 }
 
 .tiny-status {

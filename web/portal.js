@@ -54,7 +54,10 @@ function showLoginStatus(message, isError = false) {
     return;
   }
   loginStatus.textContent = message;
-  loginStatus.style.color = isError ? "#a02f2f" : "#134638";
+  loginStatus.classList.remove("is-error", "is-success");
+  if (message) {
+    loginStatus.classList.add(isError ? "is-error" : "is-success");
+  }
 }
 
 function showPortalStatus(message, isError = false) {
@@ -62,7 +65,10 @@ function showPortalStatus(message, isError = false) {
     return;
   }
   portalStatus.textContent = message;
-  portalStatus.style.color = isError ? "#a02f2f" : "#134638";
+  portalStatus.classList.remove("is-error", "is-success");
+  if (message) {
+    portalStatus.classList.add(isError ? "is-error" : "is-success");
+  }
 }
 
 function showAdminStatus(message, isError = false) {
@@ -70,7 +76,10 @@ function showAdminStatus(message, isError = false) {
     return;
   }
   adminStatus.textContent = message;
-  adminStatus.style.color = isError ? "#a02f2f" : "#134638";
+  adminStatus.classList.remove("is-error", "is-success");
+  if (message) {
+    adminStatus.classList.add(isError ? "is-error" : "is-success");
+  }
 }
 
 function setLoginBusy(isBusy) {
