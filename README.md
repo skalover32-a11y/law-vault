@@ -68,6 +68,43 @@ docker compose exec api python -m app.cli create-upload-token --ttl 24h
 
 CLI выведет код. Передайте отправителю ссылку вида `http://localhost/send/AB12-CD34`.
 
+## Развертывание на сервере
+
+Для сервера с доменом `sendvault.ru` используйте отдельный compose-файл с HTTPS:
+
+```bash
+docker compose -f docker-compose.server.yml up -d --build
+```
+
+Перед этим:
+
+1. Заполните `.env`.
+2. Выпустите сертификат Let's Encrypt для `sendvault.ru`.
+3. Убедитесь, что сертификаты лежат в `/etc/letsencrypt/live/sendvault.ru/`.
+
+После запуска сервис будет:
+
+- принимать HTTP на `80` только для редиректа и проверки `/.well-known/acme-challenge/`
+- обслуживать портал по HTTPS на `443`
+
+После продления сертификата nginx внутри compose нужно перезагрузить:
+
+```bash
+cd /opt/law-vault
+docker compose -f docker-compose.server.yml exec -T nginx nginx -s reload
+```
+
+Удобно добавить deploy-hook Certbot:
+
+```bash
+cat >/etc/letsencrypt/renewal-hooks/deploy/law-vault-nginx-reload.sh <<'EOF'
+#!/bin/sh
+cd /opt/law-vault || exit 1
+docker compose -f docker-compose.server.yml exec -T nginx nginx -s reload
+EOF
+chmod +x /etc/letsencrypt/renewal-hooks/deploy/law-vault-nginx-reload.sh
+```
+
 ## URLs
 
 - http://localhost/ — загрузка
