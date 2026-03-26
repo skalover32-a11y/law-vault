@@ -20,6 +20,13 @@ const totpDescription = document.getElementById("totpDescription");
 const linkMeta = document.getElementById("linkMeta");
 const linkExpiry = document.getElementById("linkExpiry");
 const linkCountdown = document.getElementById("linkCountdown");
+const adminPanel = document.getElementById("adminPanel");
+const adminRefreshBtn = document.getElementById("adminRefreshBtn");
+const adminCreateLogin = document.getElementById("adminCreateLogin");
+const adminCreatePassword = document.getElementById("adminCreatePassword");
+const adminCreateBtn = document.getElementById("adminCreateBtn");
+const adminUserRows = document.getElementById("adminUserRows");
+const adminStatus = document.getElementById("adminStatus");
 
 let countdownTimer = null;
 
@@ -48,6 +55,14 @@ function showPortalStatus(message, isError = false) {
   }
   portalStatus.textContent = message;
   portalStatus.style.color = isError ? "#a02f2f" : "#134638";
+}
+
+function showAdminStatus(message, isError = false) {
+  if (!adminStatus) {
+    return;
+  }
+  adminStatus.textContent = message;
+  adminStatus.style.color = isError ? "#a02f2f" : "#134638";
 }
 
 function hideTotpSetup() {
@@ -138,6 +153,7 @@ async function login() {
   localStorage.setItem(ACCESS_KEY, data.access_token);
   showLoginStatus("Вход выполнен.");
   showPortal();
+  await loadAdminUsers();
   await loadFiles();
 }
 
@@ -162,6 +178,22 @@ function resetLoginForm() {
   }
 }
 
+function resetAdminUi() {
+  if (adminPanel) {
+    adminPanel.classList.add("hidden");
+  }
+  if (adminUserRows) {
+    adminUserRows.innerHTML = "";
+  }
+  if (adminCreateLogin) {
+    adminCreateLogin.value = "";
+  }
+  if (adminCreatePassword) {
+    adminCreatePassword.value = "";
+  }
+  showAdminStatus("");
+}
+
 function getAccessToken() {
   return localStorage.getItem(ACCESS_KEY);
 }
@@ -169,6 +201,7 @@ function getAccessToken() {
 function clearSession(message) {
   localStorage.removeItem(ACCESS_KEY);
   resetLoginForm();
+  resetAdminUi();
   if (portalCard) {
     portalCard.classList.add("hidden");
   }
@@ -263,6 +296,199 @@ async function loadFiles() {
   }
 
   showPortalStatus("Список обновлён.");
+}
+
+function buildAdminRow(user) {
+  const row = document.createElement("tr");
+  const totpLabel = user.totp_enabled ? "Включен" : "Выключен";
+  const disableLabel = user.totp_enabled ? "Отключить TOTP" : "TOTP выключен";
+  const disableDisabled = user.totp_enabled ? "" : "disabled";
+  row.innerHTML = `
+    <td>${user.username}</td>
+    <td>${new Date(user.created_at).toLocaleString()}</td>
+    <td>${totpLabel}</td>
+    <td><input class="admin-password-input" type="password" autocomplete="new-password" placeholder="Новый пароль" /></td>
+    <td>
+      <div class="admin-actions">
+        <button class="btn set-password-btn" type="button">Сменить пароль</button>
+        <button class="btn btn-secondary disable-totp-btn" type="button" ${disableDisabled}>${disableLabel}</button>
+      </div>
+    </td>
+  `;
+
+  const passwordInput = row.querySelector(".admin-password-input");
+  const setPasswordBtn = row.querySelector(".set-password-btn");
+  const disableTotpBtn = row.querySelector(".disable-totp-btn");
+
+  setPasswordBtn.addEventListener("click", () => setAdminPassword(user.id, passwordInput));
+  disableTotpBtn.addEventListener("click", () => disableAdminTotp(user.id));
+
+  return row;
+}
+
+async function loadAdminUsers() {
+  const token = getAccessToken();
+  if (!token) {
+    return;
+  }
+
+  const response = await fetch("/api/portal/admin/users", {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  if (response.status === 403) {
+    resetAdminUi();
+    return;
+  }
+
+  if (response.status === 401) {
+    clearSession("Сессия истекла. Выполните вход.");
+    return;
+  }
+
+  if (!response.ok) {
+    showAdminStatus("Не удалось получить учетные записи.", true);
+    return;
+  }
+
+  const data = await response.json();
+  if (adminPanel) {
+    adminPanel.classList.remove("hidden");
+  }
+  if (adminUserRows) {
+    adminUserRows.innerHTML = "";
+    data.items.forEach((user) => {
+      adminUserRows.appendChild(buildAdminRow(user));
+    });
+  }
+  showAdminStatus("Учетные записи обновлены.");
+}
+
+async function createAdminUser() {
+  const token = getAccessToken();
+  const username = adminCreateLogin ? adminCreateLogin.value.trim() : "";
+  const password = adminCreatePassword ? adminCreatePassword.value : "";
+
+  if (!token) {
+    clearSession("Сессия не найдена. Выполните вход.");
+    return;
+  }
+
+  if (!username || !password) {
+    showAdminStatus("Заполните логин и пароль для новой учетной записи.", true);
+    return;
+  }
+
+  const response = await fetch("/api/portal/admin/users", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ username, password })
+  });
+
+  if (response.status === 401) {
+    clearSession("Сессия истекла. Выполните вход.");
+    return;
+  }
+
+  if (response.status === 403) {
+    resetAdminUi();
+    return;
+  }
+
+  if (response.status === 409) {
+    showAdminStatus("Такой логин уже существует.", true);
+    return;
+  }
+
+  if (!response.ok) {
+    showAdminStatus("Не удалось создать учетную запись.", true);
+    return;
+  }
+
+  if (adminCreateLogin) {
+    adminCreateLogin.value = "";
+  }
+  if (adminCreatePassword) {
+    adminCreatePassword.value = "";
+  }
+  showAdminStatus("Учетная запись создана.");
+  await loadAdminUsers();
+}
+
+async function setAdminPassword(userId, input) {
+  const token = getAccessToken();
+  const password = input ? input.value : "";
+  if (!token) {
+    clearSession("Сессия не найдена. Выполните вход.");
+    return;
+  }
+  if (!password) {
+    showAdminStatus("Введите новый пароль.", true);
+    return;
+  }
+
+  const response = await fetch(`/api/portal/admin/users/${userId}/password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ password })
+  });
+
+  if (response.status === 401) {
+    clearSession("Сессия истекла. Выполните вход.");
+    return;
+  }
+
+  if (response.status === 403) {
+    resetAdminUi();
+    return;
+  }
+
+  if (!response.ok) {
+    showAdminStatus("Не удалось обновить пароль.", true);
+    return;
+  }
+
+  input.value = "";
+  showAdminStatus("Пароль обновлен.");
+}
+
+async function disableAdminTotp(userId) {
+  const token = getAccessToken();
+  if (!token) {
+    clearSession("Сессия не найдена. Выполните вход.");
+    return;
+  }
+
+  const response = await fetch(`/api/portal/admin/users/${userId}/disable-totp`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  if (response.status === 401) {
+    clearSession("Сессия истекла. Выполните вход.");
+    return;
+  }
+
+  if (response.status === 403) {
+    resetAdminUi();
+    return;
+  }
+
+  if (!response.ok) {
+    showAdminStatus("Не удалось отключить TOTP.", true);
+    return;
+  }
+
+  showAdminStatus("TOTP отключен.");
+  await loadAdminUsers();
 }
 
 async function createLink() {
@@ -575,8 +801,14 @@ if (totpInput) {
 if (refreshBtn) {
   refreshBtn.addEventListener("click", loadFiles);
 }
+if (adminRefreshBtn) {
+  adminRefreshBtn.addEventListener("click", loadAdminUsers);
+}
 if (logoutBtn) {
   logoutBtn.addEventListener("click", () => clearSession("Вы вышли из кабинета."));
+}
+if (adminCreateBtn) {
+  adminCreateBtn.addEventListener("click", createAdminUser);
 }
 if (createLinkBtn) {
   createLinkBtn.addEventListener("click", createLink);
@@ -596,4 +828,5 @@ if (getAccessToken()) {
   loadFiles();
   restoreLastLink();
   loadTotpStatus();
+  loadAdminUsers();
 }

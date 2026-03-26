@@ -56,3 +56,27 @@ class TotpConfirmResponse(BaseModel):
 
 class TotpStatusResponse(BaseModel):
     enabled: bool
+
+
+class AdminUserItem(BaseModel):
+    id: str
+    username: str
+    totp_enabled: bool
+    created_at: datetime
+
+
+class AdminUserListResponse(BaseModel):
+    items: list[AdminUserItem]
+
+
+class AdminCreateUserRequest(BaseModel):
+    username: str = Field(min_length=2, max_length=64, pattern=r"^[A-Za-z0-9]+$")
+    password: str = Field(min_length=8, max_length=128)
+
+
+class AdminSetPasswordRequest(BaseModel):
+    password: str = Field(min_length=8, max_length=128)
+
+
+class StatusResponse(BaseModel):
+    status: str

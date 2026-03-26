@@ -20,8 +20,13 @@ from app.schemas import (
     TotpConfirmRequest,
     TotpConfirmResponse,
     TotpStatusResponse,
+    AdminUserItem,
+    AdminUserListResponse,
+    AdminCreateUserRequest,
+    AdminSetPasswordRequest,
+    StatusResponse,
 )
-from app.security import decode_token
+from app.security import decode_token, hash_password
 from app.storage import get_s3_client
 import base64
 import io
@@ -49,7 +54,7 @@ def get_client_ip(request: Request) -> str | None:
     return request.client.host if request.client else None
 
 
-def require_user(request: Request) -> str:
+def get_current_user(request: Request, db: Session) -> User:
     auth = request.headers.get("authorization")
     if not auth or not auth.lower().startswith("bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="missing_token")
@@ -60,12 +65,22 @@ def require_user(request: Request) -> str:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_token")
     if payload.get("type") != "access":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_token")
-    return payload.get("sub")
+    user = db.query(User).filter(User.id == payload.get("sub")).one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_token")
+    return user
+
+
+def require_admin(request: Request, db: Session) -> User:
+    user = get_current_user(request, db)
+    if user.username not in settings.admin_usernames:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
+    return user
 
 
 @router.get("/files", response_model=UploadListResponse)
 def list_files(request: Request, db: Session = Depends(get_db)):
-    require_user(request)
+    get_current_user(request, db)
     items = (
         db.query(Upload, UploadToken)
         .outerjoin(UploadToken, Upload.upload_token_id == UploadToken.id)
@@ -92,7 +107,7 @@ def list_files(request: Request, db: Session = Depends(get_db)):
 
 @router.post("/links", response_model=LinkResponse)
 def create_link(request: Request, payload: LinkCreateRequest | None = None, db: Session = Depends(get_db)):
-    require_user(request)
+    get_current_user(request, db)
 
     ttl_value = settings.UPLOAD_TOKEN_TTL_DEFAULT
     if payload and payload.ttl:
@@ -129,10 +144,7 @@ def create_link(request: Request, payload: LinkCreateRequest | None = None, db: 
 
 @router.post("/totp/start", response_model=TotpStartResponse)
 def totp_start(request: Request, db: Session = Depends(get_db)):
-    user_id = require_user(request)
-    user = db.query(User).filter(User.id == user_id).one_or_none()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not_found")
+    user = get_current_user(request, db)
     if user.totp_enabled:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="already_enabled")
 
@@ -170,9 +182,8 @@ def totp_start(request: Request, db: Session = Depends(get_db)):
 
 @router.post("/totp/confirm", response_model=TotpConfirmResponse)
 def totp_confirm(payload: TotpConfirmRequest, request: Request, db: Session = Depends(get_db)):
-    user_id = require_user(request)
-    user = db.query(User).filter(User.id == user_id).one_or_none()
-    if not user or not user.totp_secret:
+    user = get_current_user(request, db)
+    if not user.totp_secret:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not_found")
     if user.totp_enabled:
         return TotpConfirmResponse(status="enabled")
@@ -188,11 +199,81 @@ def totp_confirm(payload: TotpConfirmRequest, request: Request, db: Session = De
 
 @router.get("/totp/status", response_model=TotpStatusResponse)
 def totp_status(request: Request, db: Session = Depends(get_db)):
-    user_id = require_user(request)
-    user = db.query(User).filter(User.id == user_id).one_or_none()
+    user = get_current_user(request, db)
+    return TotpStatusResponse(enabled=bool(user.totp_enabled))
+
+
+@router.get("/admin/users", response_model=AdminUserListResponse)
+def admin_list_users(request: Request, db: Session = Depends(get_db)):
+    require_admin(request, db)
+    users = db.query(User).order_by(User.created_at.asc()).all()
+    return AdminUserListResponse(
+        items=[
+            AdminUserItem(
+                id=str(user.id),
+                username=user.username,
+                totp_enabled=user.totp_enabled,
+                created_at=user.created_at,
+            )
+            for user in users
+        ]
+    )
+
+
+@router.post("/admin/users", response_model=StatusResponse)
+def admin_create_user(payload: AdminCreateUserRequest, request: Request, db: Session = Depends(get_db)):
+    require_admin(request, db)
+    existing = db.query(User).filter(User.username == payload.username).one_or_none()
+    if existing:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="login_exists")
+
+    user = User(
+        username=payload.username,
+        password_hash=hash_password(payload.password),
+        totp_secret=None,
+        totp_enabled=False,
+    )
+    db.add(user)
+    write_audit(db, "admin_user_created", "portal", get_client_ip(request), None)
+    db.commit()
+    return StatusResponse(status="created")
+
+
+@router.post("/admin/users/{user_id}/password", response_model=StatusResponse)
+def admin_set_password(user_id: str, payload: AdminSetPasswordRequest, request: Request, db: Session = Depends(get_db)):
+    require_admin(request, db)
+    try:
+        user_uuid = UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not_found")
+
+    user = db.query(User).filter(User.id == user_uuid).one_or_none()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not_found")
-    return TotpStatusResponse(enabled=bool(user.totp_enabled))
+
+    user.password_hash = hash_password(payload.password)
+    write_audit(db, "admin_password_changed", "portal", get_client_ip(request), None)
+    db.commit()
+    return StatusResponse(status="password_updated")
+
+
+@router.post("/admin/users/{user_id}/disable-totp", response_model=StatusResponse)
+def admin_disable_totp(user_id: str, request: Request, db: Session = Depends(get_db)):
+    require_admin(request, db)
+    try:
+        user_uuid = UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not_found")
+
+    user = db.query(User).filter(User.id == user_uuid).one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not_found")
+
+    user.totp_secret = None
+    user.totp_enabled = False
+    write_audit(db, "admin_totp_disabled", "portal", get_client_ip(request), None)
+    db.commit()
+    return StatusResponse(status="totp_disabled")
 
 
 class DownloadStreamer:
@@ -249,7 +330,7 @@ class DownloadStreamer:
 
 @router.get("/files/{upload_id}/download")
 def download_file(upload_id: str, request: Request, db: Session = Depends(get_db)):
-    require_user(request)
+    get_current_user(request, db)
 
     try:
         upload_uuid = UUID(upload_id)

@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     APP_MASTER_KEY_B64: str
     JWT_SECRET: str
     TOTP_ISSUER: str = "Portal"
+    ADMIN_USERNAMES: str = "admin"
     RETENTION_AFTER_RETRIEVAL_SECONDS: int = 600
     UPLOAD_TOKEN_SALT: str = ""
     UPLOAD_TOKEN_TTL_DEFAULT: str = "24h"
@@ -40,6 +41,10 @@ class Settings(BaseSettings):
     @property
     def allowed_content_types(self) -> set[str]:
         return {item.strip() for item in self.ALLOWED_CONTENT_TYPES.split(",") if item.strip()}
+
+    @property
+    def admin_usernames(self) -> set[str]:
+        return {item.strip() for item in self.ADMIN_USERNAMES.split(",") if item.strip()}
 
 
 @lru_cache

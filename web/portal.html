@@ -84,6 +84,41 @@
         <div>Действует до: <span id="linkExpiry"></span></div>
         <div>Осталось: <span id="linkCountdown"></span></div>
       </div>
+      <section id="adminPanel" class="admin-panel hidden">
+        <div class="card-header">
+          <div>
+            <h3>Управление</h3>
+            <div class="muted">Учетные записи для входа и параметры доступа.</div>
+          </div>
+          <div class="header-actions">
+            <button id="adminRefreshBtn" class="btn btn-secondary" type="button">Обновить учетные записи</button>
+          </div>
+        </div>
+        <div class="admin-create">
+          <label class="field">
+            <span>Новый логин</span>
+            <input id="adminCreateLogin" type="text" autocomplete="off" />
+          </label>
+          <label class="field">
+            <span>Пароль</span>
+            <input id="adminCreatePassword" type="password" autocomplete="new-password" />
+          </label>
+          <button id="adminCreateBtn" class="btn" type="button">Создать учетную запись</button>
+        </div>
+        <table class="table admin-table">
+          <thead>
+            <tr>
+              <th>Логин</th>
+              <th>Создан</th>
+              <th>TOTP</th>
+              <th>Новый пароль</th>
+              <th>Действия</th>
+            </tr>
+          </thead>
+          <tbody id="adminUserRows"></tbody>
+        </table>
+        <div id="adminStatus" class="status"></div>
+      </section>
       <table class="table">
         <thead>
           <tr>
@@ -127,6 +162,6 @@
   </main>
 
   <script src="/theme.js"></script>
-  <script src="/portal.js?v=20260326-1"></script>
+  <script src="/portal.js?v=20260326-2"></script>
 </body>
 </html>
