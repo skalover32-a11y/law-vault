@@ -536,7 +536,10 @@ p {
 
 .transfer-stage,
 .transfer-rail,
-.admin-panel,
+.admin-panel {
+  padding: 22px;
+}
+
 .security details {
   padding: 0;
   overflow: hidden;
