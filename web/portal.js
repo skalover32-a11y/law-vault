@@ -16,6 +16,7 @@ const totpConfirm = document.getElementById("totpConfirm");
 const totpCodeInput = document.getElementById("totpCodeInput");
 const totpConfirmBtn = document.getElementById("totpConfirmBtn");
 const totpState = document.getElementById("totpState");
+const totpDescription = document.getElementById("totpDescription");
 const linkMeta = document.getElementById("linkMeta");
 const linkExpiry = document.getElementById("linkExpiry");
 const linkCountdown = document.getElementById("linkCountdown");
@@ -47,6 +48,51 @@ function showPortalStatus(message, isError = false) {
   }
   portalStatus.textContent = message;
   portalStatus.style.color = isError ? "#a02f2f" : "#134638";
+}
+
+function hideTotpSetup() {
+  if (totpBox) {
+    totpBox.classList.add("hidden");
+    totpBox.textContent = "";
+  }
+  if (totpQr) {
+    totpQr.classList.add("hidden");
+    totpQr.innerHTML = "";
+  }
+  if (totpConfirm) {
+    totpConfirm.classList.add("hidden");
+  }
+  if (totpCodeInput) {
+    totpCodeInput.value = "";
+  }
+}
+
+function setTotpUi(enabled) {
+  if (enabled) {
+    hideTotpSetup();
+    if (totpStartBtn) {
+      totpStartBtn.disabled = true;
+      totpStartBtn.textContent = "TOTP включен";
+    }
+    if (totpState) {
+      totpState.textContent = "TOTP включен";
+    }
+    if (totpDescription) {
+      totpDescription.textContent = "Код через приложение-аутентификатор уже включен.";
+    }
+    return;
+  }
+
+  if (totpStartBtn) {
+    totpStartBtn.disabled = false;
+    totpStartBtn.textContent = "Включить TOTP через приложение-аутентификатор";
+  }
+  if (totpState) {
+    totpState.textContent = "TOTP не включен";
+  }
+  if (totpDescription) {
+    totpDescription.textContent = "Включите код через приложение-аутентификатор.";
+  }
 }
 
 function formatBytes(bytes) {
@@ -353,16 +399,7 @@ async function loadTotpStatus() {
     return;
   }
   const data = await response.json();
-  if (data.enabled && totpStartBtn) {
-    totpStartBtn.disabled = true;
-    totpStartBtn.textContent = "TOTP включен";
-  }
-  if (data.enabled && totpConfirm) {
-    totpConfirm.classList.add("hidden");
-  }
-  if (totpState) {
-    totpState.textContent = data.enabled ? "TOTP включен" : "TOTP не включен";
-  }
+  setTotpUi(Boolean(data.enabled));
 }
 
 async function confirmTotp() {
@@ -393,16 +430,7 @@ async function confirmTotp() {
   }
 
   showPortalStatus("Код включен.");
-  if (totpConfirm) {
-    totpConfirm.classList.add("hidden");
-  }
-  if (totpStartBtn) {
-    totpStartBtn.disabled = true;
-    totpStartBtn.textContent = "TOTP включен";
-  }
-  if (totpState) {
-    totpState.textContent = "TOTP включен";
-  }
+  setTotpUi(true);
 }
 
 function startCountdown(expiryDate) {
