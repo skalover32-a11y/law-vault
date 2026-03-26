@@ -40,6 +40,7 @@ const totpInput = document.getElementById("totp");
 
 const ACCESS_KEY = "portal_access_token";
 const LAST_LINK_KEY = "portal_last_link";
+let currentSession = null;
 
 function showLoginStatus(message, isError = false) {
   if (!loginStatus) {
@@ -153,6 +154,7 @@ async function login() {
   localStorage.setItem(ACCESS_KEY, data.access_token);
   showLoginStatus("Вход выполнен.");
   showPortal();
+  await loadSessionState();
   await loadAdminUsers();
   await loadFiles();
 }
@@ -192,6 +194,42 @@ function resetAdminUi() {
     adminCreatePassword.value = "";
   }
   showAdminStatus("");
+}
+
+async function loadSessionState() {
+  const token = getAccessToken();
+  if (!token) {
+    currentSession = null;
+    return null;
+  }
+
+  const response = await fetch("/api/portal/me", {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  if (response.status === 401) {
+    currentSession = null;
+    clearSession("Сессия истекла. Выполните вход.");
+    return null;
+  }
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const data = await response.json();
+  currentSession = data;
+  setTotpUi(Boolean(data.totp_enabled));
+
+  if (data.is_admin) {
+    if (adminPanel) {
+      adminPanel.classList.remove("hidden");
+    }
+  } else {
+    resetAdminUi();
+  }
+
+  return data;
 }
 
 function getAccessToken() {
@@ -332,12 +370,20 @@ async function loadAdminUsers() {
     return;
   }
 
+  if (!currentSession || !currentSession.is_admin) {
+    resetAdminUi();
+    return;
+  }
+
   const response = await fetch("/api/portal/admin/users", {
     headers: { Authorization: `Bearer ${token}` }
   });
 
   if (response.status === 403) {
-    resetAdminUi();
+    if (adminPanel) {
+      adminPanel.classList.remove("hidden");
+    }
+    showAdminStatus("Раздел управления недоступен для этой учетной записи.", true);
     return;
   }
 
@@ -347,6 +393,9 @@ async function loadAdminUsers() {
   }
 
   if (!response.ok) {
+    if (adminPanel) {
+      adminPanel.classList.remove("hidden");
+    }
     showAdminStatus("Не удалось получить учетные записи.", true);
     return;
   }
@@ -601,7 +650,8 @@ async function startTotp() {
       return;
     }
     if (response.status === 400) {
-      showPortalStatus("Код уже включен.", true);
+      await loadSessionState();
+      showPortalStatus("Код уже включен.");
     } else {
       showPortalStatus("Не удалось начать настройку.", true);
     }
@@ -627,18 +677,7 @@ async function startTotp() {
 }
 
 async function loadTotpStatus() {
-  const token = getAccessToken();
-  if (!token) {
-    return;
-  }
-  const response = await fetch("/api/portal/totp/status", {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  if (!response.ok) {
-    return;
-  }
-  const data = await response.json();
-  setTotpUi(Boolean(data.enabled));
+  await loadSessionState();
 }
 
 async function confirmTotp() {
@@ -669,7 +708,7 @@ async function confirmTotp() {
   }
 
   showPortalStatus("Код включен.");
-  setTotpUi(true);
+  await loadSessionState();
 }
 
 function startCountdown(expiryDate) {
@@ -825,8 +864,7 @@ if (totpConfirmBtn) {
 
 if (getAccessToken()) {
   showPortal();
-  loadFiles();
   restoreLastLink();
-  loadTotpStatus();
-  loadAdminUsers();
+  loadSessionState().then(() => loadAdminUsers());
+  loadFiles();
 }

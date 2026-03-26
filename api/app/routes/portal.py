@@ -25,6 +25,7 @@ from app.schemas import (
     AdminCreateUserRequest,
     AdminSetPasswordRequest,
     StatusResponse,
+    SessionStateResponse,
 )
 from app.security import decode_token, hash_password
 from app.storage import get_s3_client
@@ -201,6 +202,16 @@ def totp_confirm(payload: TotpConfirmRequest, request: Request, db: Session = De
 def totp_status(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request, db)
     return TotpStatusResponse(enabled=bool(user.totp_enabled))
+
+
+@router.get("/me", response_model=SessionStateResponse)
+def session_state(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    return SessionStateResponse(
+        username=user.username,
+        totp_enabled=bool(user.totp_enabled),
+        is_admin=user.username in settings.admin_usernames,
+    )
 
 
 @router.get("/admin/users", response_model=AdminUserListResponse)

@@ -80,3 +80,9 @@ class AdminSetPasswordRequest(BaseModel):
 
 class StatusResponse(BaseModel):
     status: str
+
+
+class SessionStateResponse(BaseModel):
+    username: str
+    totp_enabled: bool
+    is_admin: bool
