@@ -355,6 +355,22 @@ function getStoredLastLink(links = null) {
   return selected;
 }
 
+function getStoredLinkDisplay(url) {
+  const code = getLastLinkCode(url);
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return {
+      code: code || parsed.pathname.replace(/^\/+/, "") || parsed.host,
+      subtitle: `${parsed.host}${parsed.pathname}`
+    };
+  } catch (err) {
+    return {
+      code: code || url,
+      subtitle: url
+    };
+  }
+}
+
 function renderStoredLinks(links, usedLinkIds = new Set()) {
   if (!linkList) {
     return;
@@ -374,11 +390,13 @@ function renderStoredLinks(links, usedLinkIds = new Set()) {
     const identity = getLinkIdentity(link);
     const isUsed = usedLinkIds.has(identity);
     const isSelected = identity === currentIdentity;
+    const display = getStoredLinkDisplay(link.url);
     const card = document.createElement("div");
     card.className = `saved-link${isSelected ? " is-selected" : ""}`;
     card.innerHTML = `
       <div class="saved-link-main">
-        <div class="saved-link-url">${link.url}</div>
+        <div class="saved-link-code" title="${link.url}">${display.code}</div>
+        <div class="saved-link-host" title="${link.url}">${display.subtitle}</div>
         <div class="saved-link-meta">
           Действует до: ${link.expiryDate.toLocaleString()} ·
           <span class="saved-link-state">${isUsed ? "Использована" : "Готова"}</span>
