@@ -7,11 +7,13 @@ const loginBtn = document.getElementById("loginBtn");
 const refreshBtn = document.getElementById("refreshBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 const createLinkBtn = document.getElementById("createLinkBtn");
+const shareLinkBtn = document.getElementById("shareLinkBtn");
 const copyLinkBtn = document.getElementById("copyLinkBtn");
 const deleteLinkBtn = document.getElementById("deleteLinkBtn");
 const linkBox = document.getElementById("linkBox");
 const linkQr = document.getElementById("linkQr");
 const linkList = document.getElementById("linkList");
+const shareMenu = document.getElementById("shareMenu");
 const totpStartBtn = document.getElementById("totpStartBtn");
 const totpBox = document.getElementById("totpBox");
 const totpQr = document.getElementById("totpQr");
@@ -121,9 +123,15 @@ function hideLastLinkUi() {
     clearInterval(countdownTimer);
     countdownTimer = null;
   }
+  hideShareMenu();
   if (linkBox) {
     linkBox.textContent = "";
     linkBox.classList.add("hidden");
+  }
+  if (shareLinkBtn) {
+    shareLinkBtn.classList.add("hidden");
+    shareLinkBtn.disabled = false;
+    shareLinkBtn.textContent = "Поделиться";
   }
   if (copyLinkBtn) {
     copyLinkBtn.classList.add("hidden");
@@ -149,9 +157,15 @@ function hideLastLinkUi() {
 }
 
 function renderLastLink(url, expiryDate, qrPng, qrSvg, isUsed = false) {
+  hideShareMenu();
   if (linkBox) {
     linkBox.textContent = url;
     linkBox.classList.remove("hidden");
+  }
+  if (shareLinkBtn) {
+    shareLinkBtn.classList.remove("hidden");
+    shareLinkBtn.disabled = isUsed;
+    shareLinkBtn.textContent = isUsed ? "Ссылка использована" : "Поделиться";
   }
   if (copyLinkBtn) {
     copyLinkBtn.classList.remove("hidden");
@@ -204,6 +218,16 @@ function clearStoredLinksStorage() {
   if (linkList) {
     linkList.innerHTML = "";
     linkList.classList.add("hidden");
+  }
+}
+
+function hideShareMenu() {
+  if (shareMenu) {
+    shareMenu.innerHTML = "";
+    shareMenu.classList.add("hidden");
+  }
+  if (shareLinkBtn) {
+    shareLinkBtn.setAttribute("aria-expanded", "false");
   }
 }
 
@@ -369,6 +393,139 @@ function getStoredLinkDisplay(url) {
       subtitle: url
     };
   }
+}
+
+function getCurrentShareLink() {
+  return getStoredLastLink();
+}
+
+function getShareTitle(url) {
+  const code = getLastLinkCode(url);
+  return code ? `Ссылка ${code}` : "Ссылка для передачи";
+}
+
+function getShareText(url) {
+  const code = getLastLinkCode(url);
+  return code ? `Откройте ссылку для передачи: ${code}` : "Откройте ссылку для передачи";
+}
+
+function getQrDownloadName(url) {
+  const code = getLastLinkCode(url);
+  return `${code || "portal-link"}.png`;
+}
+
+function buildQrFile(qrPng, filename) {
+  if (!qrPng || typeof File === "undefined") {
+    return null;
+  }
+
+  try {
+    const binary = window.atob(qrPng);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+    return new File([bytes], filename, { type: "image/png" });
+  } catch (err) {
+    return null;
+  }
+}
+
+function downloadQr(link) {
+  if (!link || !link.qrPng) {
+    showPortalStatus("QR недоступен для этой ссылки.", true);
+    return;
+  }
+
+  const anchor = document.createElement("a");
+  anchor.href = `data:image/png;base64,${link.qrPng}`;
+  anchor.download = getQrDownloadName(link.url);
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  showPortalStatus("QR сохранен.");
+}
+
+function renderShareMenu(link) {
+  if (!shareMenu) {
+    return;
+  }
+
+  const title = getShareTitle(link.url);
+  const text = getShareText(link.url);
+  const encodedUrl = encodeURIComponent(link.url);
+  const encodedText = encodeURIComponent(text);
+  const encodedCombined = encodeURIComponent(`${text} ${link.url}`);
+  shareMenu.innerHTML = `
+    <a class="share-option" href="https://t.me/share/url?url=${encodedUrl}&text=${encodedText}" target="_blank" rel="noopener noreferrer">Telegram</a>
+    <a class="share-option" href="https://wa.me/?text=${encodedCombined}" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+    <button class="share-option" type="button" data-action="copy-link">Копировать ссылку</button>
+    <button class="share-option" type="button" data-action="download-qr" ${link.qrPng ? "" : "disabled"}>Скачать QR</button>
+  `;
+
+  const copyBtn = shareMenu.querySelector('[data-action="copy-link"]');
+  const downloadBtn = shareMenu.querySelector('[data-action="download-qr"]');
+
+  if (copyBtn) {
+    copyBtn.addEventListener("click", async () => {
+      await copyLink(link.url);
+      hideShareMenu();
+    });
+  }
+
+  if (downloadBtn) {
+    downloadBtn.addEventListener("click", () => {
+      downloadQr(link);
+      hideShareMenu();
+    });
+  }
+
+  shareMenu.classList.remove("hidden");
+  if (shareLinkBtn) {
+    shareLinkBtn.setAttribute("aria-expanded", "true");
+  }
+}
+
+async function shareCurrentLink() {
+  const link = getCurrentShareLink();
+  if (!link) {
+    showPortalStatus("Ссылка не выбрана.", true);
+    return;
+  }
+
+  if (shareLinkBtn && shareLinkBtn.disabled) {
+    return;
+  }
+
+  const title = getShareTitle(link.url);
+  const text = getShareText(link.url);
+  const payload = { title, text, url: link.url };
+  const qrFile = buildQrFile(link.qrPng, getQrDownloadName(link.url));
+
+  if (navigator.share) {
+    try {
+      if (qrFile && typeof navigator.canShare === "function" && navigator.canShare({ files: [qrFile] })) {
+        await navigator.share({ ...payload, files: [qrFile] });
+      } else {
+        await navigator.share(payload);
+      }
+      hideShareMenu();
+      showPortalStatus("Ссылка подготовлена для отправки.");
+      return;
+    } catch (err) {
+      if (err && err.name === "AbortError") {
+        return;
+      }
+    }
+  }
+
+  if (shareMenu && !shareMenu.classList.contains("hidden")) {
+    hideShareMenu();
+    return;
+  }
+
+  renderShareMenu(link);
+  showPortalStatus("Выберите способ отправки.");
 }
 
 function renderStoredLinks(links, usedLinkIds = new Set()) {
@@ -1335,6 +1492,9 @@ if (createLinkBtn) {
 if (copyLinkBtn) {
   copyLinkBtn.addEventListener("click", copyLink);
 }
+if (shareLinkBtn) {
+  shareLinkBtn.addEventListener("click", shareCurrentLink);
+}
 if (deleteLinkBtn) {
   deleteLinkBtn.addEventListener("click", deleteLink);
 }
@@ -1351,3 +1511,22 @@ if (getAccessToken()) {
   loadSessionState().then(() => loadAdminUsers());
   loadFiles();
 }
+
+document.addEventListener("click", (event) => {
+  if (!shareMenu || shareMenu.classList.contains("hidden")) {
+    return;
+  }
+
+  const target = event.target;
+  if ((shareMenu && shareMenu.contains(target)) || (shareLinkBtn && shareLinkBtn.contains(target))) {
+    return;
+  }
+
+  hideShareMenu();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    hideShareMenu();
+  }
+});

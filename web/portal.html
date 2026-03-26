@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Портал — Вход</title>
-  <link rel="stylesheet" href="/styles.css?v=20260326-7" />
+  <link rel="stylesheet" href="/styles.css?v=20260326-8" />
 </head>
 <body>
   <main class="page">
@@ -82,6 +82,7 @@
             </div>
             <div class="link-actions">
               <button id="createLinkBtn" class="btn">Создать ссылку</button>
+              <button id="shareLinkBtn" class="btn btn-secondary hidden" type="button" aria-expanded="false">Поделиться</button>
               <button id="copyLinkBtn" class="btn btn-secondary hidden">Копировать</button>
               <button id="deleteLinkBtn" class="btn btn-secondary hidden">Удалить</button>
             </div>
@@ -94,6 +95,7 @@
               <div>Осталось: <span id="linkCountdown"></span></div>
             </div>
           </div>
+          <div id="shareMenu" class="share-menu hidden"></div>
         </div>
         <aside class="transfer-rail">
           <div class="transfer-rail-head">
@@ -183,6 +185,6 @@
   </main>
 
   <script src="/theme.js?v=20260326-5"></script>
-  <script src="/portal.js?v=20260326-12"></script>
+  <script src="/portal.js?v=20260326-14"></script>
 </body>
 </html>

@@ -621,6 +621,48 @@ p {
   font-weight: 600;
 }
 
+.share-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.theme-dark .share-menu {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.share-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.share-option:hover,
+.share-option:focus-visible {
+  border-color: rgba(210, 187, 151, 0.44);
+}
+
+.share-option:disabled {
+  opacity: 0.56;
+  cursor: not-allowed;
+}
+
 .transfer-rail-head {
   display: grid;
   gap: 8px;
