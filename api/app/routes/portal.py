@@ -17,6 +17,7 @@ from app.schemas import (
     UploadListItem,
     LinkResponse,
     LinkCreateRequest,
+    LinkRevokeRequest,
     TotpStartResponse,
     TotpConfirmRequest,
     TotpConfirmResponse,
@@ -170,6 +171,36 @@ def create_link(request: Request, payload: LinkCreateRequest | None = None, db: 
         )
 
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="link_generation_failed")
+
+
+@router.post("/links/revoke", response_model=StatusResponse)
+def revoke_link(payload: LinkRevokeRequest, request: Request, db: Session = Depends(get_db)):
+    get_current_user(request, db)
+
+    token_record = None
+    if payload.id:
+        try:
+            token_id = UUID(payload.id)
+        except ValueError:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid_link")
+        token_record = db.query(UploadToken).filter(UploadToken.id == token_id).one_or_none()
+    elif payload.code:
+        token_hash = hash_code(payload.code, settings.UPLOAD_TOKEN_SALT)
+        token_record = db.query(UploadToken).filter(UploadToken.token_hash == token_hash).one_or_none()
+    else:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="missing_link")
+
+    if not token_record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not_found")
+
+    related_upload = db.query(Upload.id).filter(Upload.upload_token_id == token_record.id).first()
+    if related_upload:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="link_in_use")
+
+    db.delete(token_record)
+    write_audit(db, "link_deleted", "portal", get_client_ip(request), None)
+    db.commit()
+    return StatusResponse(status="link_deleted")
 
 
 @router.post("/totp/start", response_model=TotpStartResponse)

@@ -34,6 +34,11 @@ class LinkCreateRequest(BaseModel):
     ttl: str | None = None
 
 
+class LinkRevokeRequest(BaseModel):
+    id: str | None = None
+    code: str | None = None
+
+
 class LinkResponse(BaseModel):
     id: str
     code: str

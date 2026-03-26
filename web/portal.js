@@ -8,6 +8,7 @@ const refreshBtn = document.getElementById("refreshBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 const createLinkBtn = document.getElementById("createLinkBtn");
 const copyLinkBtn = document.getElementById("copyLinkBtn");
+const deleteLinkBtn = document.getElementById("deleteLinkBtn");
 const linkBox = document.getElementById("linkBox");
 const linkQr = document.getElementById("linkQr");
 const totpStartBtn = document.getElementById("totpStartBtn");
@@ -80,6 +81,11 @@ function hideLastLinkUi() {
   if (copyLinkBtn) {
     copyLinkBtn.classList.add("hidden");
   }
+  if (deleteLinkBtn) {
+    deleteLinkBtn.classList.add("hidden");
+    deleteLinkBtn.disabled = false;
+    deleteLinkBtn.textContent = "Удалить";
+  }
   if (linkQr) {
     linkQr.innerHTML = "";
     linkQr.classList.add("hidden");
@@ -107,6 +113,11 @@ function renderLastLink(url, expiryDate, qrPng, qrSvg) {
   }
   if (copyLinkBtn) {
     copyLinkBtn.classList.remove("hidden");
+  }
+  if (deleteLinkBtn) {
+    deleteLinkBtn.classList.remove("hidden");
+    deleteLinkBtn.disabled = false;
+    deleteLinkBtn.textContent = "Удалить";
   }
   renderLinkQr(qrPng, qrSvg);
   if (linkMeta) {
@@ -185,6 +196,16 @@ function getLastLinkLabel(url) {
   }
 }
 
+function getLastLinkCode(url) {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    const match = parsed.pathname.match(SEND_PATH_RE);
+    return match ? match[1].toUpperCase() : null;
+  } catch (err) {
+    return null;
+  }
+}
+
 function syncLastLinkWithItems(items) {
   const stored = getStoredLastLink();
   if (!stored) {
@@ -200,6 +221,10 @@ function syncLastLinkWithItems(items) {
   }
 
   const hasPendingFiles = relatedItems.some((item) => item.status === "uploaded");
+  if (deleteLinkBtn && relatedItems.length > 0) {
+    deleteLinkBtn.disabled = true;
+    deleteLinkBtn.textContent = "Уже использована";
+  }
   if (!hasPendingFiles) {
     clearLastLink();
   }
@@ -713,6 +738,79 @@ async function createLink() {
   showPortalStatus("Ссылка создана.");
 }
 
+async function deleteLink() {
+  const token = getAccessToken();
+  const stored = getStoredLastLink();
+
+  if (!token) {
+    clearSession("Сессия не найдена. Выполните вход.");
+    return;
+  }
+
+  if (!stored) {
+    clearLastLink();
+    showPortalStatus("Ссылка уже недоступна.");
+    return;
+  }
+
+  if (!window.confirm("Удалить текущую ссылку для передачи?")) {
+    return;
+  }
+
+  const payload = {};
+  if (stored.id) {
+    payload.id = stored.id;
+  } else {
+    const code = getLastLinkCode(stored.url);
+    if (code) {
+      payload.code = code;
+    }
+  }
+
+  if (!payload.id && !payload.code) {
+    clearLastLink();
+    showPortalStatus("Не удалось определить ссылку для удаления.", true);
+    return;
+  }
+
+  const response = await fetch("/api/portal/links/revoke", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (response.status === 401) {
+    clearSession("Сессия истекла. Выполните вход.");
+    return;
+  }
+
+  if (response.status === 404) {
+    clearLastLink();
+    showPortalStatus("Ссылка уже удалена.");
+    return;
+  }
+
+  if (response.status === 409) {
+    if (deleteLinkBtn) {
+      deleteLinkBtn.disabled = true;
+      deleteLinkBtn.textContent = "Уже использована";
+    }
+    showPortalStatus("Ссылка уже использована и не может быть удалена вручную.", true);
+    return;
+  }
+
+  if (!response.ok) {
+    showPortalStatus("Не удалось удалить ссылку.", true);
+    return;
+  }
+
+  clearLastLink();
+  showPortalStatus("Ссылка удалена.");
+}
+
 function saveLastLink(url, expiresAt, id, qrPng, qrSvg) {
   const payload = {
     id: id || null,
@@ -956,6 +1054,9 @@ if (createLinkBtn) {
 }
 if (copyLinkBtn) {
   copyLinkBtn.addEventListener("click", copyLink);
+}
+if (deleteLinkBtn) {
+  deleteLinkBtn.addEventListener("click", deleteLink);
 }
 if (totpStartBtn) {
   totpStartBtn.addEventListener("click", startTotp);
