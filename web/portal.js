@@ -47,6 +47,7 @@ const LINKS_KEY = "portal_links";
 const CURRENT_LINK_KEY = "portal_current_link";
 let currentSession = null;
 const SEND_PATH_RE = /^\/send\/([A-Z0-9]{4}-[A-Z0-9]{4})$/i;
+let loginInFlight = false;
 
 function showLoginStatus(message, isError = false) {
   if (!loginStatus) {
@@ -70,6 +71,40 @@ function showAdminStatus(message, isError = false) {
   }
   adminStatus.textContent = message;
   adminStatus.style.color = isError ? "#a02f2f" : "#134638";
+}
+
+function setLoginBusy(isBusy) {
+  loginInFlight = isBusy;
+  if (loginBtn) {
+    loginBtn.disabled = isBusy;
+  }
+}
+
+function normalizeTotpCode(value) {
+  return (value || "").replace(/\D/g, "").slice(0, 6);
+}
+
+function maybeAutoLoginFromTotp() {
+  if (!totpInput) {
+    return;
+  }
+
+  const normalized = normalizeTotpCode(totpInput.value);
+  if (totpInput.value !== normalized) {
+    totpInput.value = normalized;
+  }
+
+  if (loginInFlight) {
+    return;
+  }
+
+  if (loginCard && loginCard.classList.contains("hidden")) {
+    return;
+  }
+
+  if (normalized.length === 6 && loginInput && loginInput.value.trim() && passwordInput && passwordInput.value) {
+    login();
+  }
 }
 
 function hideLastLinkUi() {
@@ -485,40 +520,45 @@ function formatBytes(bytes) {
 }
 
 async function login() {
+  if (loginInFlight) {
+    return;
+  }
+
   showLoginStatus("Отправка...");
   const username = loginInput.value.trim();
   const password = passwordInput.value;
-  const totp = totpInput.value.trim();
+  const totp = normalizeTotpCode(totpInput ? totpInput.value : "");
 
   if (!username || !password) {
     showLoginStatus("Заполните логин и пароль.", true);
     return;
   }
 
-  let response;
+  setLoginBusy(true);
   try {
-    response = await fetch("/api/auth/login", {
+    const response = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password, totp })
     });
+
+    if (!response.ok) {
+      showLoginStatus("Неверные данные или код.", true);
+      return;
+    }
+
+    const data = await response.json();
+    localStorage.setItem(ACCESS_KEY, data.access_token);
+    showLoginStatus("Вход выполнен.");
+    showPortal();
+    await loadSessionState();
+    await loadAdminUsers();
+    await loadFiles();
   } catch (err) {
     showLoginStatus("Ошибка сети. Проверьте подключение.", true);
-    return;
+  } finally {
+    setLoginBusy(false);
   }
-
-  if (!response.ok) {
-    showLoginStatus("Неверные данные или код.", true);
-    return;
-  }
-
-  const data = await response.json();
-  localStorage.setItem(ACCESS_KEY, data.access_token);
-  showLoginStatus("Вход выполнен.");
-  showPortal();
-  await loadSessionState();
-  await loadAdminUsers();
-  await loadFiles();
 }
 
 function showPortal() {
@@ -1248,6 +1288,7 @@ if (totpInput) {
   totpInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter") login();
   });
+  totpInput.addEventListener("input", maybeAutoLoginFromTotp);
 }
 if (refreshBtn) {
   refreshBtn.addEventListener("click", loadFiles);
