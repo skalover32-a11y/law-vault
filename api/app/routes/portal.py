@@ -51,6 +51,15 @@ def make_qr_png(value: str) -> str | None:
         return None
 
 
+def make_qr_svg(value: str) -> str | None:
+    try:
+        qr = qrcode.make(value, image_factory=qrcode.image.svg.SvgImage)
+        svg = qr.to_string().decode("utf-8")
+        return svg.replace('<?xml version="1.0" encoding="UTF-8"?>', "").strip()
+    except Exception:
+        return None
+
+
 def get_db():
     db = SessionLocal()
     try:
@@ -157,6 +166,7 @@ def create_link(request: Request, payload: LinkCreateRequest | None = None, db: 
             url=url,
             expires_at=expires_at,
             qr_png=make_qr_png(url),
+            qr_svg=make_qr_svg(url),
         )
 
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="link_generation_failed")

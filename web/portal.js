@@ -100,7 +100,7 @@ function clearLastLink() {
   hideLastLinkUi();
 }
 
-function renderLastLink(url, expiryDate, qrPng) {
+function renderLastLink(url, expiryDate, qrPng, qrSvg) {
   if (linkBox) {
     linkBox.textContent = url;
     linkBox.classList.remove("hidden");
@@ -108,13 +108,7 @@ function renderLastLink(url, expiryDate, qrPng) {
   if (copyLinkBtn) {
     copyLinkBtn.classList.remove("hidden");
   }
-  if (linkQr && qrPng) {
-    linkQr.innerHTML = `<img src="data:image/png;base64,${qrPng}" alt="QR для ссылки передачи">`;
-    linkQr.classList.remove("hidden");
-  } else if (linkQr) {
-    linkQr.innerHTML = "";
-    linkQr.classList.add("hidden");
-  }
+  renderLinkQr(qrPng, qrSvg);
   if (linkMeta) {
     linkMeta.classList.remove("hidden");
   }
@@ -148,12 +142,34 @@ function getStoredLastLink() {
       url: data.url,
       expiresAt: data.expires_at,
       qrPng: typeof data.qr_png === "string" ? data.qr_png : null,
+      qrSvg: typeof data.qr_svg === "string" ? data.qr_svg : null,
       expiryDate
     };
   } catch (err) {
     clearLastLink();
     return null;
   }
+}
+
+function renderLinkQr(qrPng, qrSvg) {
+  if (!linkQr) {
+    return;
+  }
+
+  if (qrPng) {
+    linkQr.innerHTML = `<img src="data:image/png;base64,${qrPng}" alt="QR для ссылки передачи">`;
+    linkQr.classList.remove("hidden");
+    return;
+  }
+
+  if (qrSvg) {
+    linkQr.innerHTML = qrSvg;
+    linkQr.classList.remove("hidden");
+    return;
+  }
+
+  linkQr.innerHTML = "";
+  linkQr.classList.add("hidden");
 }
 
 function getLastLinkLabel(url) {
@@ -692,17 +708,18 @@ async function createLink() {
 
   const data = await response.json();
   const expiryDate = new Date(data.expires_at);
-  renderLastLink(data.url, expiryDate, data.qr_png);
-  saveLastLink(data.url, data.expires_at, data.id, data.qr_png);
+  renderLastLink(data.url, expiryDate, data.qr_png, data.qr_svg);
+  saveLastLink(data.url, data.expires_at, data.id, data.qr_png, data.qr_svg);
   showPortalStatus("Ссылка создана.");
 }
 
-function saveLastLink(url, expiresAt, id, qrPng) {
+function saveLastLink(url, expiresAt, id, qrPng, qrSvg) {
   const payload = {
     id: id || null,
     url,
     expires_at: expiresAt,
-    qr_png: qrPng || null
+    qr_png: qrPng || null,
+    qr_svg: qrSvg || null
   };
   localStorage.setItem(LAST_LINK_KEY, JSON.stringify(payload));
 }
@@ -713,7 +730,7 @@ function restoreLastLink() {
     hideLastLinkUi();
     return;
   }
-  renderLastLink(stored.url, stored.expiryDate, stored.qrPng);
+  renderLastLink(stored.url, stored.expiryDate, stored.qrPng, stored.qrSvg);
 }
 
 async function startTotp() {

@@ -40,6 +40,7 @@ class LinkResponse(BaseModel):
     url: str
     expires_at: datetime
     qr_png: str | None = None
+    qr_svg: str | None = None
 
 
 class TotpStartResponse(BaseModel):
