@@ -3,6 +3,7 @@ import os
 from datetime import datetime, timezone
 
 import pyotp
+from sqlalchemy import func
 
 from app.db.session import SessionLocal
 from app.models import UploadToken, User
@@ -28,9 +29,19 @@ def create_upload_token(ttl: str) -> str:
     return token
 
 
+def normalize_username(username: str) -> str:
+    return username.strip().lower()
+
+
+def find_user(session, username: str) -> User | None:
+    normalized = normalize_username(username)
+    return session.query(User).filter(func.lower(User.username) == normalized).one_or_none()
+
+
 def create_user(username: str, password: str, totp_secret: str | None) -> str:
+    username = normalize_username(username)
     session = SessionLocal()
-    existing = session.query(User).filter(User.username == username).one_or_none()
+    existing = find_user(session, username)
     if existing:
         session.close()
         raise ValueError("login already exists")
@@ -48,7 +59,7 @@ def create_user(username: str, password: str, totp_secret: str | None) -> str:
 
 def reset_totp(username: str) -> tuple[str, str]:
     session = SessionLocal()
-    user = session.query(User).filter(User.username == username).one_or_none()
+    user = find_user(session, username)
     if not user:
         session.close()
         raise ValueError("login not found")
@@ -63,7 +74,7 @@ def reset_totp(username: str) -> tuple[str, str]:
 
 def disable_totp(username: str) -> None:
     session = SessionLocal()
-    user = session.query(User).filter(User.username == username).one_or_none()
+    user = find_user(session, username)
     if not user:
         session.close()
         raise ValueError("login not found")
@@ -75,7 +86,7 @@ def disable_totp(username: str) -> None:
 
 def set_password(username: str, password: str) -> None:
     session = SessionLocal()
-    user = session.query(User).filter(User.username == username).one_or_none()
+    user = find_user(session, username)
     if not user:
         session.close()
         raise ValueError("login not found")

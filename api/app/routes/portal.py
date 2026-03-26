@@ -4,6 +4,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.audit import write_audit
@@ -74,7 +75,7 @@ def get_current_user(request: Request, db: Session) -> User:
 
 def require_admin(request: Request, db: Session) -> User:
     user = get_current_user(request, db)
-    if user.username not in settings.admin_usernames:
+    if user.username.lower() not in settings.admin_usernames:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
     return user
 
@@ -210,7 +211,7 @@ def session_state(request: Request, db: Session = Depends(get_db)):
     return SessionStateResponse(
         username=user.username,
         totp_enabled=bool(user.totp_enabled),
-        is_admin=user.username in settings.admin_usernames,
+        is_admin=user.username.lower() in settings.admin_usernames,
     )
 
 
@@ -234,12 +235,13 @@ def admin_list_users(request: Request, db: Session = Depends(get_db)):
 @router.post("/admin/users", response_model=StatusResponse)
 def admin_create_user(payload: AdminCreateUserRequest, request: Request, db: Session = Depends(get_db)):
     require_admin(request, db)
-    existing = db.query(User).filter(User.username == payload.username).one_or_none()
+    username = payload.username.strip().lower()
+    existing = db.query(User).filter(func.lower(User.username) == username).one_or_none()
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="login_exists")
 
     user = User(
-        username=payload.username,
+        username=username,
         password_hash=hash_password(payload.password),
         totp_secret=None,
         totp_enabled=False,

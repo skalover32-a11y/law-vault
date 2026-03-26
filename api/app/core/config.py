@@ -44,7 +44,7 @@ class Settings(BaseSettings):
 
     @property
     def admin_usernames(self) -> set[str]:
-        return {item.strip() for item in self.ADMIN_USERNAMES.split(",") if item.strip()}
+        return {item.strip().lower() for item in self.ADMIN_USERNAMES.split(",") if item.strip()}
 
 
 @lru_cache
