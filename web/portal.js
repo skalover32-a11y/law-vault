@@ -399,6 +399,10 @@ function getCurrentShareLink() {
   return getStoredLastLink();
 }
 
+function isUiEvent(value) {
+  return Boolean(value) && typeof value === "object" && typeof value.preventDefault === "function";
+}
+
 function getShareTitle(url) {
   const code = getLastLinkCode(url);
   return code ? `Ссылка ${code}` : "Ссылка для передачи";
@@ -1161,7 +1165,7 @@ async function createLink() {
 
 async function deleteLink(linkOverride = null) {
   const token = getAccessToken();
-  const stored = linkOverride || getStoredLastLink();
+  const stored = isUiEvent(linkOverride) ? getStoredLastLink() : (linkOverride || getStoredLastLink());
 
   if (!token) {
     clearSession("Сессия не найдена. Выполните вход.");
@@ -1396,7 +1400,7 @@ function updateDeleteCountdowns() {
 }
 
 async function copyLink(text = null) {
-  const value = text || (linkBox ? linkBox.textContent : "");
+  const value = typeof text === "string" ? text : (linkBox ? linkBox.textContent : "");
   const textToCopy = value ? value.trim() : "";
   if (!textToCopy) {
     return;
@@ -1490,13 +1494,13 @@ if (createLinkBtn) {
   createLinkBtn.addEventListener("click", createLink);
 }
 if (copyLinkBtn) {
-  copyLinkBtn.addEventListener("click", copyLink);
+  copyLinkBtn.addEventListener("click", () => copyLink());
 }
 if (shareLinkBtn) {
   shareLinkBtn.addEventListener("click", shareCurrentLink);
 }
 if (deleteLinkBtn) {
-  deleteLinkBtn.addEventListener("click", deleteLink);
+  deleteLinkBtn.addEventListener("click", () => deleteLink());
 }
 if (totpStartBtn) {
   totpStartBtn.addEventListener("click", startTotp);
