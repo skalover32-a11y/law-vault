@@ -4,13 +4,16 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Портал — Вход</title>
-  <link rel="stylesheet" href="/styles.css?v=20260108-2" />
+  <link rel="stylesheet" href="/styles.css?v=20260326-4" />
 </head>
 <body>
   <main class="page">
     <header class="hero">
       <div class="hero-brand">Портал</div>
-      <button id="themeToggle" class="btn btn-secondary btn-compact" type="button">Тема</button>
+      <button id="themeToggle" class="theme-toggle" type="button" aria-label="Переключить оформление">
+        <span class="theme-toggle-caption">Оформление</span>
+        <span id="themeToggleValue" class="theme-toggle-value">Светлое</span>
+      </button>
       <h1>Получение</h1>
       <p class="muted">Вход по учётным данным.</p>
     </header>
@@ -161,7 +164,7 @@
     </section>
   </main>
 
-  <script src="/theme.js"></script>
+  <script src="/theme.js?v=20260326-4"></script>
   <script src="/portal.js?v=20260326-3"></script>
 </body>
 </html>
