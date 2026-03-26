@@ -150,12 +150,25 @@ function showPortal() {
   }
 }
 
+function resetLoginForm() {
+  if (loginInput) {
+    loginInput.value = "";
+  }
+  if (passwordInput) {
+    passwordInput.value = "";
+  }
+  if (totpInput) {
+    totpInput.value = "";
+  }
+}
+
 function getAccessToken() {
   return localStorage.getItem(ACCESS_KEY);
 }
 
 function clearSession(message) {
   localStorage.removeItem(ACCESS_KEY);
+  resetLoginForm();
   if (portalCard) {
     portalCard.classList.add("hidden");
   }
