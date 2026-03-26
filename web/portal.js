@@ -11,6 +11,7 @@ const copyLinkBtn = document.getElementById("copyLinkBtn");
 const deleteLinkBtn = document.getElementById("deleteLinkBtn");
 const linkBox = document.getElementById("linkBox");
 const linkQr = document.getElementById("linkQr");
+const linkList = document.getElementById("linkList");
 const totpStartBtn = document.getElementById("totpStartBtn");
 const totpBox = document.getElementById("totpBox");
 const totpQr = document.getElementById("totpQr");
@@ -42,6 +43,8 @@ const totpInput = document.getElementById("totp");
 
 const ACCESS_KEY = "portal_access_token";
 const LAST_LINK_KEY = "portal_last_link";
+const LINKS_KEY = "portal_links";
+const CURRENT_LINK_KEY = "portal_current_link";
 let currentSession = null;
 const SEND_PATH_RE = /^\/send\/([A-Z0-9]{4}-[A-Z0-9]{4})$/i;
 
@@ -101,12 +104,7 @@ function hideLastLinkUi() {
   }
 }
 
-function clearLastLink() {
-  localStorage.removeItem(LAST_LINK_KEY);
-  hideLastLinkUi();
-}
-
-function renderLastLink(url, expiryDate, qrPng, qrSvg) {
+function renderLastLink(url, expiryDate, qrPng, qrSvg, isUsed = false) {
   if (linkBox) {
     linkBox.textContent = url;
     linkBox.classList.remove("hidden");
@@ -116,8 +114,8 @@ function renderLastLink(url, expiryDate, qrPng, qrSvg) {
   }
   if (deleteLinkBtn) {
     deleteLinkBtn.classList.remove("hidden");
-    deleteLinkBtn.disabled = false;
-    deleteLinkBtn.textContent = "Удалить";
+    deleteLinkBtn.disabled = isUsed;
+    deleteLinkBtn.textContent = isUsed ? "Уже использована" : "Удалить";
   }
   renderLinkQr(qrPng, qrSvg);
   if (linkMeta) {
@@ -127,39 +125,6 @@ function renderLastLink(url, expiryDate, qrPng, qrSvg) {
     linkExpiry.textContent = expiryDate.toLocaleString();
   }
   startCountdown(expiryDate);
-}
-
-function getStoredLastLink() {
-  const raw = localStorage.getItem(LAST_LINK_KEY);
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    const data = JSON.parse(raw);
-    if (!data.url || !data.expires_at) {
-      clearLastLink();
-      return null;
-    }
-
-    const expiryDate = new Date(data.expires_at);
-    if (Number.isNaN(expiryDate.getTime()) || expiryDate <= new Date()) {
-      clearLastLink();
-      return null;
-    }
-
-    return {
-      id: typeof data.id === "string" ? data.id : null,
-      url: data.url,
-      expiresAt: data.expires_at,
-      qrPng: typeof data.qr_png === "string" ? data.qr_png : null,
-      qrSvg: typeof data.qr_svg === "string" ? data.qr_svg : null,
-      expiryDate
-    };
-  } catch (err) {
-    clearLastLink();
-    return null;
-  }
 }
 
 function renderLinkQr(qrPng, qrSvg) {
@@ -181,6 +146,132 @@ function renderLinkQr(qrPng, qrSvg) {
 
   linkQr.innerHTML = "";
   linkQr.classList.add("hidden");
+}
+
+function getLinkIdentity(link) {
+  return link && (link.id || link.url);
+}
+
+function clearStoredLinksStorage() {
+  localStorage.removeItem(LAST_LINK_KEY);
+  localStorage.removeItem(LINKS_KEY);
+  localStorage.removeItem(CURRENT_LINK_KEY);
+  hideLastLinkUi();
+  if (linkList) {
+    linkList.innerHTML = "";
+    linkList.classList.add("hidden");
+  }
+}
+
+function normalizeStoredLink(data) {
+  if (!data || !data.url) {
+    return null;
+  }
+
+  const expiresAt = data.expires_at || data.expiresAt;
+  if (!expiresAt) {
+    return null;
+  }
+
+  const expiryDate = new Date(expiresAt);
+  if (Number.isNaN(expiryDate.getTime()) || expiryDate <= new Date()) {
+    return null;
+  }
+
+  return {
+    id: typeof data.id === "string" ? data.id : null,
+    url: data.url,
+    expiresAt,
+    qrPng: typeof data.qr_png === "string" ? data.qr_png : (typeof data.qrPng === "string" ? data.qrPng : null),
+    qrSvg: typeof data.qr_svg === "string" ? data.qr_svg : (typeof data.qrSvg === "string" ? data.qrSvg : null),
+    expiryDate
+  };
+}
+
+function getCurrentLinkIdentity() {
+  return localStorage.getItem(CURRENT_LINK_KEY);
+}
+
+function setCurrentLinkIdentity(identity) {
+  if (!identity) {
+    localStorage.removeItem(CURRENT_LINK_KEY);
+    return;
+  }
+  localStorage.setItem(CURRENT_LINK_KEY, identity);
+}
+
+function saveStoredLinks(links) {
+  if (!links.length) {
+    clearStoredLinksStorage();
+    return;
+  }
+
+  const payload = links.map((link) => ({
+    id: link.id || null,
+    url: link.url,
+    expires_at: link.expiresAt,
+    qr_png: link.qrPng || null,
+    qr_svg: link.qrSvg || null
+  }));
+
+  localStorage.setItem(LINKS_KEY, JSON.stringify(payload));
+  localStorage.removeItem(LAST_LINK_KEY);
+
+  const currentIdentity = getCurrentLinkIdentity();
+  const hasCurrent = payload.some((link) => getLinkIdentity(link) === currentIdentity);
+  if (!hasCurrent) {
+    setCurrentLinkIdentity(getLinkIdentity(payload[0]));
+  }
+}
+
+function getStoredLinks() {
+  const raw = localStorage.getItem(LINKS_KEY);
+  let parsed = [];
+  let migrated = false;
+
+  if (raw) {
+    try {
+      const items = JSON.parse(raw);
+      if (!Array.isArray(items)) {
+        clearStoredLinksStorage();
+        return [];
+      }
+      parsed = items;
+    } catch (err) {
+      clearStoredLinksStorage();
+      return [];
+    }
+  } else {
+    const legacyRaw = localStorage.getItem(LAST_LINK_KEY);
+    if (legacyRaw) {
+      try {
+        const legacyItem = JSON.parse(legacyRaw);
+        parsed = [legacyItem];
+        migrated = true;
+      } catch (err) {
+        clearStoredLinksStorage();
+        return [];
+      }
+    }
+  }
+
+  const normalized = parsed.map(normalizeStoredLink).filter(Boolean);
+  const changed = migrated || normalized.length !== parsed.length;
+  if (changed) {
+    saveStoredLinks(normalized);
+  }
+
+  if (!normalized.length) {
+    return [];
+  }
+
+  const currentIdentity = getCurrentLinkIdentity();
+  const hasCurrent = normalized.some((link) => getLinkIdentity(link) === currentIdentity);
+  if (!hasCurrent) {
+    setCurrentLinkIdentity(getLinkIdentity(normalized[0]));
+  }
+
+  return normalized;
 }
 
 function getLastLinkLabel(url) {
@@ -206,28 +297,135 @@ function getLastLinkCode(url) {
   }
 }
 
+function getStoredLastLink(links = null) {
+  const storedLinks = links || getStoredLinks();
+  if (!storedLinks.length) {
+    return null;
+  }
+
+  const currentIdentity = getCurrentLinkIdentity();
+  const selected = storedLinks.find((link) => getLinkIdentity(link) === currentIdentity) || storedLinks[0];
+  if (getLinkIdentity(selected) !== currentIdentity) {
+    setCurrentLinkIdentity(getLinkIdentity(selected));
+  }
+  return selected;
+}
+
+function renderStoredLinks(links, usedLinkIds = new Set()) {
+  if (!linkList) {
+    return;
+  }
+
+  if (!links.length) {
+    linkList.innerHTML = "";
+    linkList.classList.add("hidden");
+    return;
+  }
+
+  const current = getStoredLastLink(links);
+  const currentIdentity = getLinkIdentity(current);
+  linkList.innerHTML = "";
+
+  links.forEach((link) => {
+    const identity = getLinkIdentity(link);
+    const isUsed = usedLinkIds.has(identity);
+    const isSelected = identity === currentIdentity;
+    const card = document.createElement("div");
+    card.className = `saved-link${isSelected ? " is-selected" : ""}`;
+    card.innerHTML = `
+      <div class="saved-link-main">
+        <div class="saved-link-url">${link.url}</div>
+        <div class="saved-link-meta">
+          Действует до: ${link.expiryDate.toLocaleString()} ·
+          <span class="saved-link-state">${isUsed ? "Использована" : "Готова"}</span>
+        </div>
+      </div>
+      <div class="saved-link-actions">
+        <button class="btn btn-secondary" type="button" data-action="select" ${isSelected ? "disabled" : ""}>${isSelected ? "Показана" : "Показать"}</button>
+        <button class="btn btn-secondary" type="button" data-action="copy">Копировать</button>
+        <button class="btn btn-secondary" type="button" data-action="delete" ${isUsed ? "disabled" : ""}>${isUsed ? "Уже использована" : "Удалить"}</button>
+      </div>
+    `;
+
+    const selectBtn = card.querySelector('[data-action="select"]');
+    const copyBtn = card.querySelector('[data-action="copy"]');
+    const deleteBtn = card.querySelector('[data-action="delete"]');
+
+    if (selectBtn) {
+      selectBtn.addEventListener("click", () => {
+        setCurrentLinkIdentity(identity);
+        restoreLastLink(usedLinkIds);
+      });
+    }
+    if (copyBtn) {
+      copyBtn.addEventListener("click", () => copyLink(link.url));
+    }
+    if (deleteBtn) {
+      deleteBtn.addEventListener("click", () => deleteLink(link));
+    }
+
+    linkList.appendChild(card);
+  });
+
+  linkList.classList.remove("hidden");
+}
+
+function removeStoredLink(target) {
+  const links = getStoredLinks();
+  const targetIdentity = typeof target === "string" ? target : getLinkIdentity(target);
+  const filtered = links.filter((link) => getLinkIdentity(link) !== targetIdentity);
+  saveStoredLinks(filtered);
+}
+
+function clearLastLink() {
+  const current = getStoredLastLink();
+  if (!current) {
+    clearStoredLinksStorage();
+    return;
+  }
+  removeStoredLink(current);
+  restoreLastLink();
+}
+
 function syncLastLinkWithItems(items) {
-  const stored = getStoredLastLink();
-  if (!stored) {
+  const links = getStoredLinks();
+  if (!links.length) {
+    renderStoredLinks([]);
+    hideLastLinkUi();
     return;
   }
 
-  const relatedItems = stored.id
-    ? items.filter((item) => item.upload_link_id === stored.id)
-    : items.filter((item) => item.upload_link_label === getLastLinkLabel(stored.url));
+  const usedLinkIds = new Set();
+  const keptLinks = [];
 
-  if (!relatedItems.length) {
+  links.forEach((link) => {
+    const relatedItems = link.id
+      ? items.filter((item) => item.upload_link_id === link.id)
+      : items.filter((item) => item.upload_link_label === getLastLinkLabel(link.url));
+
+    if (!relatedItems.length) {
+      keptLinks.push(link);
+      return;
+    }
+
+    usedLinkIds.add(getLinkIdentity(link));
+    const hasPendingFiles = relatedItems.some((item) => item.status === "uploaded");
+    if (hasPendingFiles) {
+      keptLinks.push(link);
+    }
+  });
+
+  saveStoredLinks(keptLinks);
+  if (!keptLinks.length) {
+    hideLastLinkUi();
+    renderStoredLinks([]);
     return;
   }
 
-  const hasPendingFiles = relatedItems.some((item) => item.status === "uploaded");
-  if (deleteLinkBtn && relatedItems.length > 0) {
-    deleteLinkBtn.disabled = true;
-    deleteLinkBtn.textContent = "Уже использована";
-  }
-  if (!hasPendingFiles) {
-    clearLastLink();
-  }
+  const current = getStoredLastLink(keptLinks);
+  const currentUsed = usedLinkIds.has(getLinkIdentity(current));
+  renderLastLink(current.url, current.expiryDate, current.qrPng, current.qrSvg, currentUsed);
+  renderStoredLinks(keptLinks, usedLinkIds);
 }
 
 function hideTotpSetup() {
@@ -732,15 +930,14 @@ async function createLink() {
   }
 
   const data = await response.json();
-  const expiryDate = new Date(data.expires_at);
-  renderLastLink(data.url, expiryDate, data.qr_png, data.qr_svg);
   saveLastLink(data.url, data.expires_at, data.id, data.qr_png, data.qr_svg);
+  restoreLastLink();
   showPortalStatus("Ссылка создана.");
 }
 
-async function deleteLink() {
+async function deleteLink(linkOverride = null) {
   const token = getAccessToken();
-  const stored = getStoredLastLink();
+  const stored = linkOverride || getStoredLastLink();
 
   if (!token) {
     clearSession("Сессия не найдена. Выполните вход.");
@@ -768,7 +965,8 @@ async function deleteLink() {
   }
 
   if (!payload.id && !payload.code) {
-    clearLastLink();
+    removeStoredLink(stored);
+    restoreLastLink();
     showPortalStatus("Не удалось определить ссылку для удаления.", true);
     return;
   }
@@ -788,7 +986,8 @@ async function deleteLink() {
   }
 
   if (response.status === 404) {
-    clearLastLink();
+    removeStoredLink(stored);
+    restoreLastLink();
     showPortalStatus("Ссылка уже удалена.");
     return;
   }
@@ -807,28 +1006,40 @@ async function deleteLink() {
     return;
   }
 
-  clearLastLink();
+  removeStoredLink(stored);
+  restoreLastLink();
   showPortalStatus("Ссылка удалена.");
 }
 
 function saveLastLink(url, expiresAt, id, qrPng, qrSvg) {
-  const payload = {
+  const nextLink = normalizeStoredLink({
     id: id || null,
     url,
     expires_at: expiresAt,
     qr_png: qrPng || null,
     qr_svg: qrSvg || null
-  };
-  localStorage.setItem(LAST_LINK_KEY, JSON.stringify(payload));
-}
-
-function restoreLastLink() {
-  const stored = getStoredLastLink();
-  if (!stored) {
-    hideLastLinkUi();
+  });
+  if (!nextLink) {
     return;
   }
-  renderLastLink(stored.url, stored.expiryDate, stored.qrPng, stored.qrSvg);
+
+  const links = getStoredLinks().filter((link) => getLinkIdentity(link) !== getLinkIdentity(nextLink));
+  links.unshift(nextLink);
+  saveStoredLinks(links);
+  setCurrentLinkIdentity(getLinkIdentity(nextLink));
+}
+
+function restoreLastLink(usedLinkIds = new Set()) {
+  const links = getStoredLinks();
+  if (!links.length) {
+    hideLastLinkUi();
+    renderStoredLinks([]);
+    return;
+  }
+  const current = getStoredLastLink(links);
+  const currentUsed = usedLinkIds.has(getLinkIdentity(current));
+  renderLastLink(current.url, current.expiryDate, current.qrPng, current.qrSvg, currentUsed);
+  renderStoredLinks(links, usedLinkIds);
 }
 
 async function startTotp() {
@@ -960,13 +1171,14 @@ function updateDeleteCountdowns() {
   });
 }
 
-async function copyLink() {
-  const text = linkBox.textContent;
-  if (!text) {
+async function copyLink(text = null) {
+  const value = text || (linkBox ? linkBox.textContent : "");
+  const textToCopy = value ? value.trim() : "";
+  if (!textToCopy) {
     return;
   }
   try {
-    await navigator.clipboard.writeText(text);
+    await navigator.clipboard.writeText(textToCopy);
     showPortalStatus("Ссылка скопирована.");
   } catch (err) {
     showPortalStatus("Не удалось скопировать.", true);

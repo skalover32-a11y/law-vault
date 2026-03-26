@@ -340,6 +340,60 @@ h1 {
   color: var(--muted);
 }
 
+.link-list {
+  display: grid;
+  gap: 10px;
+}
+
+.saved-link {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.saved-link.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(31, 111, 91, 0.12);
+}
+
+.saved-link-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.saved-link-url {
+  font-family: "Courier New", monospace;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.saved-link-meta {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.saved-link-state {
+  font-weight: 600;
+  color: var(--accent-dark);
+}
+
+.saved-link-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.saved-link-actions .btn {
+  white-space: nowrap;
+}
+
 .admin-panel {
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -431,6 +485,10 @@ h1 {
 
 .theme-dark .group-row td {
   color: #c7b79b;
+}
+
+.theme-dark .saved-link.is-selected {
+  box-shadow: 0 0 0 1px rgba(122, 168, 155, 0.18);
 }
 
 .security {
@@ -536,6 +594,11 @@ h1 {
     align-items: flex-start;
   }
 
+  .saved-link {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .admin-create {
     grid-template-columns: 1fr;
   }
@@ -544,6 +607,10 @@ h1 {
     width: 100%;
     justify-content: flex-start;
     flex-wrap: wrap;
+  }
+
+  .saved-link-actions {
+    justify-content: flex-start;
   }
 }
 
