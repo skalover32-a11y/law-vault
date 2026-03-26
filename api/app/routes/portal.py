@@ -41,6 +41,16 @@ settings = get_settings()
 router = APIRouter(prefix="/portal", tags=["portal"])
 
 
+def make_qr_png(value: str) -> str | None:
+    try:
+        img = qrcode.make(value)
+        buffer = io.BytesIO()
+        img.save(buffer, format="PNG")
+        return base64.b64encode(buffer.getvalue()).decode("utf-8")
+    except Exception:
+        return None
+
+
 def get_db():
     db = SessionLocal()
     try:
@@ -141,7 +151,13 @@ def create_link(request: Request, payload: LinkCreateRequest | None = None, db: 
         db.refresh(record)
         base = str(request.base_url).rstrip("/")
         url = f"{base}/send/{code}"
-        return LinkResponse(id=str(record.id), code=code, url=url, expires_at=expires_at)
+        return LinkResponse(
+            id=str(record.id),
+            code=code,
+            url=url,
+            expires_at=expires_at,
+            qr_png=make_qr_png(url),
+        )
 
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="link_generation_failed")
 
@@ -168,13 +184,7 @@ def totp_start(request: Request, db: Session = Depends(get_db)):
     except Exception:
         qr_svg = ""
 
-    try:
-        img = qrcode.make(otpauth_url)
-        buffer = io.BytesIO()
-        img.save(buffer, format="PNG")
-        qr_png = base64.b64encode(buffer.getvalue()).decode("utf-8")
-    except Exception:
-        qr_png = None
+    qr_png = make_qr_png(otpauth_url)
 
     return TotpStartResponse(
         secret=secret,
