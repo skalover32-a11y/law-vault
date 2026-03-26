@@ -41,6 +41,7 @@ const totpInput = document.getElementById("totp");
 const ACCESS_KEY = "portal_access_token";
 const LAST_LINK_KEY = "portal_last_link";
 let currentSession = null;
+const SEND_PATH_RE = /^\/send\/([A-Z0-9]{4}-[A-Z0-9]{4})$/i;
 
 function showLoginStatus(message, isError = false) {
   if (!loginStatus) {
@@ -64,6 +65,115 @@ function showAdminStatus(message, isError = false) {
   }
   adminStatus.textContent = message;
   adminStatus.style.color = isError ? "#a02f2f" : "#134638";
+}
+
+function hideLastLinkUi() {
+  if (countdownTimer) {
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+  }
+  if (linkBox) {
+    linkBox.textContent = "";
+    linkBox.classList.add("hidden");
+  }
+  if (copyLinkBtn) {
+    copyLinkBtn.classList.add("hidden");
+  }
+  if (linkMeta) {
+    linkMeta.classList.add("hidden");
+  }
+  if (linkExpiry) {
+    linkExpiry.textContent = "";
+  }
+  if (linkCountdown) {
+    linkCountdown.textContent = "";
+  }
+}
+
+function clearLastLink() {
+  localStorage.removeItem(LAST_LINK_KEY);
+  hideLastLinkUi();
+}
+
+function renderLastLink(url, expiryDate) {
+  if (linkBox) {
+    linkBox.textContent = url;
+    linkBox.classList.remove("hidden");
+  }
+  if (copyLinkBtn) {
+    copyLinkBtn.classList.remove("hidden");
+  }
+  if (linkMeta) {
+    linkMeta.classList.remove("hidden");
+  }
+  if (linkExpiry) {
+    linkExpiry.textContent = expiryDate.toLocaleString();
+  }
+  startCountdown(expiryDate);
+}
+
+function getStoredLastLink() {
+  const raw = localStorage.getItem(LAST_LINK_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const data = JSON.parse(raw);
+    if (!data.url || !data.expires_at) {
+      clearLastLink();
+      return null;
+    }
+
+    const expiryDate = new Date(data.expires_at);
+    if (Number.isNaN(expiryDate.getTime()) || expiryDate <= new Date()) {
+      clearLastLink();
+      return null;
+    }
+
+    return {
+      id: typeof data.id === "string" ? data.id : null,
+      url: data.url,
+      expiresAt: data.expires_at,
+      expiryDate
+    };
+  } catch (err) {
+    clearLastLink();
+    return null;
+  }
+}
+
+function getLastLinkLabel(url) {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    const match = parsed.pathname.match(SEND_PATH_RE);
+    if (!match) {
+      return null;
+    }
+    return `${match[1].toUpperCase().slice(0, 4)}-****`;
+  } catch (err) {
+    return null;
+  }
+}
+
+function syncLastLinkWithItems(items) {
+  const stored = getStoredLastLink();
+  if (!stored) {
+    return;
+  }
+
+  const relatedItems = stored.id
+    ? items.filter((item) => item.upload_link_id === stored.id)
+    : items.filter((item) => item.upload_link_label === getLastLinkLabel(stored.url));
+
+  if (!relatedItems.length) {
+    return;
+  }
+
+  const hasPendingFiles = relatedItems.some((item) => item.status === "uploaded");
+  if (!hasPendingFiles) {
+    clearLastLink();
+  }
 }
 
 function hideTotpSetup() {
@@ -273,6 +383,7 @@ async function loadFiles() {
   }
 
   const data = await response.json();
+  syncLastLinkWithItems(data.items);
   if (fileRows) {
     fileRows.innerHTML = "";
   }
@@ -567,27 +678,15 @@ async function createLink() {
   }
 
   const data = await response.json();
-  if (linkBox) {
-    linkBox.textContent = data.url;
-    linkBox.classList.remove("hidden");
-  }
-  if (copyLinkBtn) {
-    copyLinkBtn.classList.remove("hidden");
-  }
-  if (linkMeta) {
-    linkMeta.classList.remove("hidden");
-  }
   const expiryDate = new Date(data.expires_at);
-  if (linkExpiry) {
-    linkExpiry.textContent = expiryDate.toLocaleString();
-  }
-  startCountdown(expiryDate);
-  saveLastLink(data.url, data.expires_at);
+  renderLastLink(data.url, expiryDate);
+  saveLastLink(data.url, data.expires_at, data.id);
   showPortalStatus("Ссылка создана.");
 }
 
-function saveLastLink(url, expiresAt) {
+function saveLastLink(url, expiresAt, id) {
   const payload = {
+    id: id || null,
     url,
     expires_at: expiresAt
   };
@@ -595,40 +694,12 @@ function saveLastLink(url, expiresAt) {
 }
 
 function restoreLastLink() {
-  const raw = localStorage.getItem(LAST_LINK_KEY);
-  if (!raw) {
+  const stored = getStoredLastLink();
+  if (!stored) {
+    hideLastLinkUi();
     return;
   }
-  try {
-    const data = JSON.parse(raw);
-    if (!data.url || !data.expires_at) {
-      return;
-    }
-    const expiryDate = new Date(data.expires_at);
-    if (Number.isNaN(expiryDate.getTime())) {
-      return;
-    }
-    if (expiryDate <= new Date()) {
-      localStorage.removeItem(LAST_LINK_KEY);
-      return;
-    }
-    if (linkBox) {
-      linkBox.textContent = data.url;
-      linkBox.classList.remove("hidden");
-    }
-    if (copyLinkBtn) {
-      copyLinkBtn.classList.remove("hidden");
-    }
-    if (linkMeta) {
-      linkMeta.classList.remove("hidden");
-    }
-    if (linkExpiry) {
-      linkExpiry.textContent = expiryDate.toLocaleString();
-    }
-    startCountdown(expiryDate);
-  } catch (err) {
-    localStorage.removeItem(LAST_LINK_KEY);
-  }
+  renderLastLink(stored.url, stored.expiryDate);
 }
 
 async function startTotp() {

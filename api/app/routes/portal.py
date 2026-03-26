@@ -100,6 +100,7 @@ def list_files(request: Request, db: Session = Depends(get_db)):
                 status=upload.status,
                 retrieved_at=upload.retrieved_at,
                 delete_at=upload.delete_at,
+                upload_link_id=str(token.id) if token else None,
                 upload_link_label=token.token_label if token else None,
             )
             for upload, token in items
@@ -137,9 +138,10 @@ def create_link(request: Request, payload: LinkCreateRequest | None = None, db: 
         db.add(record)
         write_audit(db, "link_created", "portal", get_client_ip(request), None)
         db.commit()
+        db.refresh(record)
         base = str(request.base_url).rstrip("/")
         url = f"{base}/send/{code}"
-        return LinkResponse(code=code, url=url, expires_at=expires_at)
+        return LinkResponse(id=str(record.id), code=code, url=url, expires_at=expires_at)
 
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="link_generation_failed")
 

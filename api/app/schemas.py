@@ -22,6 +22,7 @@ class UploadListItem(BaseModel):
     status: str
     retrieved_at: datetime | None = None
     delete_at: datetime | None = None
+    upload_link_id: str | None = None
     upload_link_label: str | None = None
 
 
@@ -34,6 +35,7 @@ class LinkCreateRequest(BaseModel):
 
 
 class LinkResponse(BaseModel):
+    id: str
     code: str
     url: str
     expires_at: datetime
