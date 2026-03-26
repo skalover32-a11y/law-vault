@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Портал — Вход</title>
-  <link rel="stylesheet" href="/styles.css?v=20260326-4" />
+  <link rel="stylesheet" href="/styles.css?v=20260326-5" />
 </head>
 <body>
   <main class="page">
@@ -72,24 +72,39 @@
           <button class="btn btn-secondary" type="button" disabled>Привязать Telegram</button>
         </div>
       </div>
-      <div class="link-panel">
-        <div>
-          <div class="link-title">Передача</div>
-          <div class="muted">Ссылка действует 24 часа или до первой загрузки.</div>
+      <section class="transfer-shell">
+        <div class="transfer-stage">
+          <div class="transfer-stage-head">
+            <div>
+              <div class="section-label-small">Передача</div>
+              <h3>Активная ссылка</h3>
+              <div class="muted">Ссылка действует 24 часа или до первой загрузки.</div>
+            </div>
+            <div class="link-actions">
+              <button id="createLinkBtn" class="btn">Создать ссылку</button>
+              <button id="copyLinkBtn" class="btn btn-secondary hidden">Копировать</button>
+              <button id="deleteLinkBtn" class="btn btn-secondary hidden">Удалить</button>
+            </div>
+          </div>
+          <div id="linkBox" class="link-box hidden"></div>
+          <div class="transfer-stage-body">
+            <div id="linkQr" class="qr-box hidden"></div>
+            <div id="linkMeta" class="link-meta hidden">
+              <div>Действует до: <span id="linkExpiry"></span></div>
+              <div>Осталось: <span id="linkCountdown"></span></div>
+            </div>
+          </div>
         </div>
-        <div class="link-actions">
-          <button id="createLinkBtn" class="btn">Создать ссылку</button>
-          <button id="copyLinkBtn" class="btn btn-secondary hidden">Копировать</button>
-          <button id="deleteLinkBtn" class="btn btn-secondary hidden">Удалить</button>
-        </div>
-      </div>
-      <div id="linkBox" class="link-box hidden"></div>
-      <div id="linkQr" class="qr-box hidden"></div>
-      <div id="linkMeta" class="link-meta hidden">
-        <div>Действует до: <span id="linkExpiry"></span></div>
-        <div>Осталось: <span id="linkCountdown"></span></div>
-      </div>
-      <div id="linkList" class="link-list hidden"></div>
+        <aside class="transfer-rail">
+          <div class="transfer-rail-head">
+            <div class="section-label-small">Ссылки</div>
+            <h3>Подготовленные ссылки</h3>
+            <div class="muted">Можно хранить несколько ссылок и быстро переключаться между ними.</div>
+          </div>
+          <div id="linkList" class="link-list hidden"></div>
+          <div class="link-list-placeholder">Список появится после создания первой ссылки.</div>
+        </aside>
+      </section>
       <section id="adminPanel" class="admin-panel hidden">
         <div class="card-header">
           <div>
