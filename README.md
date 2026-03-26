@@ -86,6 +86,8 @@ docker compose -f docker-compose.server.yml up -d --build
 
 - принимать HTTP на `80` только для редиректа и проверки `/.well-known/acme-challenge/`
 - обслуживать портал по HTTPS на `443`
+- перенаправлять корень домена `/` в `/portal`
+- открывать страницу передачи только по ссылке `/send/AB12-CD34`
 
 После продления сертификата nginx внутри compose нужно перезагрузить:
 
