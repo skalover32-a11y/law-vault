@@ -71,6 +71,9 @@ def delete_expired() -> None:
 
             session.query(UploadKey).filter(UploadKey.upload_id == upload.id).delete()
             _delete_object_strict(client, settings.S3_BUCKET, upload.object_key)
+            # Write the audit row before deleting the upload itself. Otherwise the
+            # audit FK points at an already-deleted upload row and the commit fails.
+            write_audit(session, "delete", "system", None, str(upload.id))
             session.delete(upload)
             session.flush()
 
@@ -83,7 +86,6 @@ def delete_expired() -> None:
                 if not has_related_uploads:
                     session.query(UploadToken).filter(UploadToken.id == token_id).delete()
 
-            write_audit(session, "delete", "system", None, str(upload.id))
             session.commit()
             logger.info("Deleted upload %s and its encrypted object.", upload.id)
         except Exception:

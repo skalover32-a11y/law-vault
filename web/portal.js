@@ -1389,7 +1389,7 @@ function updateDeleteCountdowns() {
     const now = new Date();
     const diffMs = deleteAt - now;
     if (diffMs <= 0) {
-      node.textContent = "удаляется";
+      node.textContent = "ожидает очистки";
       return;
     }
     const totalSeconds = Math.floor(diffMs / 1000);
