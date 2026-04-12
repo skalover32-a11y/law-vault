@@ -4,7 +4,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 
 from app.audit import write_audit
@@ -103,10 +103,21 @@ def require_admin(request: Request, db: Session) -> User:
 @router.get("/files", response_model=UploadListResponse)
 def list_files(request: Request, db: Session = Depends(get_db)):
     get_current_user(request, db)
+    now = datetime.now(timezone.utc)
+    cleanup_grace = now - timedelta(minutes=2)
     items = (
         db.query(Upload, UploadToken)
         .outerjoin(UploadToken, Upload.upload_token_id == UploadToken.id)
-        .filter(Upload.status.in_([UploadStatus.uploaded.value, UploadStatus.retrieved.value]))
+        .filter(
+            or_(
+                Upload.status == UploadStatus.uploaded.value,
+                and_(
+                    Upload.status == UploadStatus.retrieved.value,
+                    Upload.delete_at.isnot(None),
+                    Upload.delete_at >= cleanup_grace,
+                ),
+            )
+        )
         .order_by(Upload.created_at.desc())
         .all()
     )

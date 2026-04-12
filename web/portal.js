@@ -901,14 +901,14 @@ async function loadFiles() {
         const actionDisabled = item.status !== "uploaded" ? "disabled" : "";
         const row = document.createElement("tr");
         row.innerHTML = `
-          <td>${item.orig_name}</td>
-          <td>${formatBytes(item.size_bytes)}</td>
-          <td>${new Date(item.created_at).toLocaleString()}</td>
-          <td>
+          <td data-label="Имя">${item.orig_name}</td>
+          <td data-label="Размер">${formatBytes(item.size_bytes)}</td>
+          <td data-label="Загружено">${new Date(item.created_at).toLocaleString()}</td>
+          <td data-label="Удаление">
             <div>${deleteLabel}</div>
             <div class="delete-countdown" data-delete-at="${item.delete_at || ""}"></div>
           </td>
-          <td><button class="btn btn-secondary" data-id="${item.id}" ${actionDisabled}>${actionLabel}</button></td>
+          <td data-label="Действия"><button class="btn btn-secondary" data-id="${item.id}" ${actionDisabled}>${actionLabel}</button></td>
         `;
         const button = row.querySelector("button");
         if (item.status === "uploaded") {
@@ -933,11 +933,11 @@ function buildAdminRow(user) {
   const disableLabel = user.totp_enabled ? "Отключить TOTP" : "TOTP выключен";
   const disableDisabled = user.totp_enabled ? "" : "disabled";
   row.innerHTML = `
-    <td>${user.username}</td>
-    <td>${new Date(user.created_at).toLocaleString()}</td>
-    <td>${totpLabel}</td>
-    <td><input class="admin-password-input" type="password" autocomplete="new-password" placeholder="Новый пароль" /></td>
-    <td>
+    <td data-label="Логин">${user.username}</td>
+    <td data-label="Создан">${new Date(user.created_at).toLocaleString()}</td>
+    <td data-label="TOTP">${totpLabel}</td>
+    <td data-label="Новый пароль"><input class="admin-password-input" type="password" autocomplete="new-password" placeholder="Новый пароль" /></td>
+    <td data-label="Действия">
       <div class="admin-actions">
         <button class="btn set-password-btn" type="button">Сменить пароль</button>
         <button class="btn btn-secondary disable-totp-btn" type="button" ${disableDisabled}>${disableLabel}</button>
