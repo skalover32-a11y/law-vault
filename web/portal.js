@@ -252,6 +252,7 @@ function normalizeStoredLink(data) {
     expiresAt,
     qrPng: typeof data.qr_png === "string" ? data.qr_png : (typeof data.qrPng === "string" ? data.qrPng : null),
     qrSvg: typeof data.qr_svg === "string" ? data.qr_svg : (typeof data.qrSvg === "string" ? data.qrSvg : null),
+    wasUsed: Boolean(data.was_used ?? data.wasUsed),
     expiryDate
   };
 }
@@ -279,7 +280,8 @@ function saveStoredLinks(links) {
     url: link.url,
     expires_at: link.expiresAt,
     qr_png: link.qrPng || null,
-    qr_svg: link.qrSvg || null
+    qr_svg: link.qrSvg || null,
+    was_used: Boolean(link.wasUsed)
   }));
 
   localStorage.setItem(LINKS_KEY, JSON.stringify(payload));
@@ -552,6 +554,7 @@ function renderStoredLinks(links, usedLinkIds = new Set()) {
     const isUsed = usedLinkIds.has(identity);
     const isSelected = identity === currentIdentity;
     const display = getStoredLinkDisplay(link.url);
+    const stateLabel = isUsed ? "Ожидает получения" : "Готова";
     const card = document.createElement("div");
     card.className = `saved-link${isSelected ? " is-selected" : ""}`;
     card.innerHTML = `
@@ -560,7 +563,7 @@ function renderStoredLinks(links, usedLinkIds = new Set()) {
         <div class="saved-link-host" title="${link.url}">${display.subtitle}</div>
         <div class="saved-link-meta">
           Действует до: ${link.expiryDate.toLocaleString()} ·
-          <span class="saved-link-state">${isUsed ? "Использована" : "Готова"}</span>
+          <span class="saved-link-state">${stateLabel}</span>
         </div>
       </div>
       <div class="saved-link-actions">
@@ -625,8 +628,9 @@ function syncLastLinkWithItems(items) {
     const relatedItems = link.id
       ? items.filter((item) => item.upload_link_id === link.id)
       : items.filter((item) => item.upload_link_label === getLastLinkLabel(link.url));
+    const wasUsed = Boolean(link.wasUsed) || relatedItems.length > 0;
 
-    if (!relatedItems.length) {
+    if (!wasUsed) {
       keptLinks.push(link);
       return;
     }
@@ -634,7 +638,7 @@ function syncLastLinkWithItems(items) {
     usedLinkIds.add(getLinkIdentity(link));
     const hasPendingFiles = relatedItems.some((item) => item.status === "uploaded");
     if (hasPendingFiles) {
-      keptLinks.push(link);
+      keptLinks.push({ ...link, wasUsed: true });
     }
   });
 
@@ -799,7 +803,7 @@ async function loadSessionState() {
 
   if (response.status === 401) {
     currentSession = null;
-    clearSession("Сессия истекла. Выполните вход.");
+    clearSession("Сессия истекла. Выполните вход.", true);
     return null;
   }
 
@@ -826,10 +830,13 @@ function getAccessToken() {
   return localStorage.getItem(ACCESS_KEY);
 }
 
-function clearSession(message) {
+function clearSession(message, isError = false) {
   localStorage.removeItem(ACCESS_KEY);
   resetLoginForm();
   resetAdminUi();
+  hideTotpSetup();
+  hideShareMenu();
+  showPortalStatus("");
   if (portalCard) {
     portalCard.classList.add("hidden");
   }
@@ -837,7 +844,7 @@ function clearSession(message) {
     loginCard.classList.remove("hidden");
   }
   if (message) {
-    showLoginStatus(message, true);
+    showLoginStatus(message, isError);
   }
 }
 
@@ -845,7 +852,7 @@ async function loadFiles() {
   showPortalStatus("Загрузка списка...");
   const token = getAccessToken();
   if (!token) {
-    clearSession("Сессия не найдена. Выполните вход.");
+    clearSession("Сессия не найдена. Выполните вход.", true);
     return;
   }
 
@@ -855,7 +862,7 @@ async function loadFiles() {
 
   if (!response.ok) {
     if (response.status === 401) {
-      clearSession("Сессия истекла. Выполните вход.");
+      clearSession("Сессия истекла. Выполните вход.", true);
       return;
     }
     showPortalStatus("Не удалось получить список.", true);
@@ -864,10 +871,6 @@ async function loadFiles() {
 
   const data = await response.json();
   syncLastLinkWithItems(data.items);
-  if (fileRows) {
-    fileRows.innerHTML = "";
-  }
-
   if (fileRows) {
     fileRows.innerHTML = "";
   }
@@ -979,7 +982,7 @@ async function loadAdminUsers() {
   }
 
   if (response.status === 401) {
-    clearSession("Сессия истекла. Выполните вход.");
+    clearSession("Сессия истекла. Выполните вход.", true);
     return;
   }
 
@@ -1010,7 +1013,7 @@ async function createAdminUser() {
   const password = adminCreatePassword ? adminCreatePassword.value : "";
 
   if (!token) {
-    clearSession("Сессия не найдена. Выполните вход.");
+    clearSession("Сессия не найдена. Выполните вход.", true);
     return;
   }
 
@@ -1029,7 +1032,7 @@ async function createAdminUser() {
   });
 
   if (response.status === 401) {
-    clearSession("Сессия истекла. Выполните вход.");
+    clearSession("Сессия истекла. Выполните вход.", true);
     return;
   }
 
@@ -1062,7 +1065,7 @@ async function setAdminPassword(userId, input) {
   const token = getAccessToken();
   const password = input ? input.value : "";
   if (!token) {
-    clearSession("Сессия не найдена. Выполните вход.");
+    clearSession("Сессия не найдена. Выполните вход.", true);
     return;
   }
   if (!password) {
@@ -1080,7 +1083,7 @@ async function setAdminPassword(userId, input) {
   });
 
   if (response.status === 401) {
-    clearSession("Сессия истекла. Выполните вход.");
+    clearSession("Сессия истекла. Выполните вход.", true);
     return;
   }
 
@@ -1101,7 +1104,7 @@ async function setAdminPassword(userId, input) {
 async function disableAdminTotp(userId) {
   const token = getAccessToken();
   if (!token) {
-    clearSession("Сессия не найдена. Выполните вход.");
+    clearSession("Сессия не найдена. Выполните вход.", true);
     return;
   }
 
@@ -1113,7 +1116,7 @@ async function disableAdminTotp(userId) {
   });
 
   if (response.status === 401) {
-    clearSession("Сессия истекла. Выполните вход.");
+    clearSession("Сессия истекла. Выполните вход.", true);
     return;
   }
 
@@ -1135,7 +1138,7 @@ async function createLink() {
   showPortalStatus("");
   const token = getAccessToken();
   if (!token) {
-    clearSession("Сессия не найдена. Выполните вход.");
+    clearSession("Сессия не найдена. Выполните вход.", true);
     return;
   }
 
@@ -1150,7 +1153,7 @@ async function createLink() {
 
   if (!response.ok) {
     if (response.status === 401) {
-      clearSession("Сессия истекла. Выполните вход.");
+      clearSession("Сессия истекла. Выполните вход.", true);
       return;
     }
     showPortalStatus("Не удалось создать ссылку.", true);
@@ -1168,7 +1171,7 @@ async function deleteLink(linkOverride = null) {
   const stored = isUiEvent(linkOverride) ? getStoredLastLink() : (linkOverride || getStoredLastLink());
 
   if (!token) {
-    clearSession("Сессия не найдена. Выполните вход.");
+    clearSession("Сессия не найдена. Выполните вход.", true);
     return;
   }
 
@@ -1209,7 +1212,7 @@ async function deleteLink(linkOverride = null) {
   });
 
   if (response.status === 401) {
-    clearSession("Сессия истекла. Выполните вход.");
+    clearSession("Сессия истекла. Выполните вход.", true);
     return;
   }
 
@@ -1274,7 +1277,7 @@ async function startTotp() {
   showPortalStatus("");
   const token = getAccessToken();
   if (!token) {
-    clearSession("Сессия не найдена. Выполните вход.");
+    clearSession("Сессия не найдена. Выполните вход.", true);
     return;
   }
 
@@ -1285,7 +1288,7 @@ async function startTotp() {
 
   if (!response.ok) {
     if (response.status === 401) {
-      clearSession("Сессия истекла. Выполните вход.");
+      clearSession("Сессия истекла. Выполните вход.", true);
       return;
     }
     if (response.status === 400) {
@@ -1339,7 +1342,7 @@ async function confirmTotp() {
 
   if (!response.ok) {
     if (response.status === 401) {
-      clearSession("Сессия истекла. Выполните вход.");
+      clearSession("Сессия истекла. Выполните вход.", true);
       return;
     }
     showPortalStatus("Код не принят.", true);
@@ -1389,13 +1392,13 @@ function updateDeleteCountdowns() {
     const now = new Date();
     const diffMs = deleteAt - now;
     if (diffMs <= 0) {
-      node.textContent = "ожидает очистки";
+      node.textContent = "очистка в ближайшую минуту";
       return;
     }
     const totalSeconds = Math.floor(diffMs / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
-    node.textContent = `${minutes}м ${seconds}с`;
+    node.textContent = `до очистки ${minutes}м ${seconds}с`;
   });
 }
 

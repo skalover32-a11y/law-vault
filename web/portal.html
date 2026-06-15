@@ -3,192 +3,274 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Портал — Вход</title>
-  <link rel="stylesheet" href="/styles.css?v=20260412-1" />
+  <title>Портал — Получение</title>
+  <link rel="stylesheet" href="/styles.css?v=20260615-1" />
 </head>
-<body>
-  <main class="page">
-    <header class="hero">
-      <div class="hero-brand">Портал</div>
-      <button id="themeToggle" class="theme-toggle" type="button" aria-label="Переключить оформление">
-        <span class="theme-toggle-caption">Оформление</span>
-        <span id="themeToggleValue" class="theme-toggle-value">Светлое</span>
-      </button>
-      <h1>Получение</h1>
-      <p class="muted">Вход по учётным данным.</p>
+<body class="vault-portal-page">
+  <main class="vault-app">
+    <header class="site-header" aria-label="Навигация">
+      <a class="brand" href="/">
+        <span>Portal</span>
+        <small>secure relay</small>
+      </a>
+      <nav class="main-nav" aria-label="Разделы">
+        <a href="/">Передача</a>
+        <a href="/portal" aria-current="page">Получение</a>
+      </nav>
+      <div class="top-actions">
+        <button id="themeToggle" class="theme-toggle" type="button" aria-label="Переключить оформление">
+          <span class="theme-toggle-caption">Оформление</span>
+          <span id="themeToggleValue" class="theme-toggle-value">Светлое</span>
+        </button>
+      </div>
     </header>
 
-    <section id="loginCard" class="card">
-      <h2>Вход</h2>
-      <label class="field">
-        <span>Логин</span>
-        <input id="login" type="text" autocomplete="username" />
-      </label>
-      <label class="field">
-        <span>Пароль</span>
-        <input id="password" type="password" autocomplete="current-password" />
-      </label>
-      <label class="field">
-        <span>Код</span>
-        <input id="totp" type="text" inputmode="numeric" autocomplete="one-time-code" />
-      </label>
-      <button id="loginBtn" class="btn" type="button" onclick="window.portalLogin && window.portalLogin()">Вход</button>
-      <div id="loginStatus" class="status"></div>
+    <section class="hero portal-hero" aria-labelledby="portal-title">
+      <div class="hero-copy">
+        <p class="eyebrow">Портал</p>
+        <h1 id="portal-title">Получение<br />и контроль.</h1>
+        <p>Кабинет для входа, управления ссылками, скачивания файлов и контроля короткого периода хранения.</p>
+      </div>
+      <div class="stationery" aria-hidden="true">
+        <div class="paper paper-back"></div>
+        <div class="paper paper-main">
+          <span class="emboss">Portal<br />Secure</span>
+          <span class="paper-line line-1"></span>
+          <span class="paper-line line-2"></span>
+          <span class="paper-line line-3"></span>
+        </div>
+        <div class="paper paper-card">
+          <span>Portal</span>
+          <small>secure relay</small>
+        </div>
+        <div class="paper paper-tall"></div>
+        <div class="brand-seal hero-seal"><span>P</span></div>
+      </div>
     </section>
 
-    <section id="portalCard" class="card hidden">
-      <div class="card-header">
-        <h2>Список</h2>
-        <div class="header-actions">
-          <button id="refreshBtn" class="btn btn-secondary">Обновить</button>
-          <button id="logoutBtn" class="btn btn-secondary">Выйти</button>
-        </div>
-      </div>
-      <div class="link-panel">
-        <div>
-          <div class="link-title">Доступ</div>
-          <div id="totpDescription" class="muted">Включите код через приложение-аутентификатор.</div>
-          <div id="totpState" class="tiny-status">TOTP не включен</div>
-        </div>
-      <div class="link-actions">
-          <button id="totpStartBtn" class="btn btn-secondary">Включить TOTP через приложение-аутентификатор</button>
-      </div>
-    </div>
-      <div id="totpBox" class="link-box hidden"></div>
-      <div id="totpQr" class="qr-box hidden"></div>
-      <div id="totpConfirm" class="totp-confirm hidden">
-        <label class="field">
-          <span>Код</span>
-          <input id="totpCodeInput" type="text" inputmode="numeric" autocomplete="one-time-code" />
-        </label>
-        <button id="totpConfirmBtn" class="btn">Подтвердить</button>
-      </div>
-      <div class="link-panel">
-        <div>
-          <div class="link-title">Связь</div>
-          <div class="muted">Привязка Telegram будет доступна позже.</div>
-        </div>
-        <div class="link-actions">
-          <button class="btn btn-secondary" type="button" disabled>Привязать Telegram</button>
-        </div>
-      </div>
-      <section class="transfer-shell">
-        <div class="transfer-stage">
-          <div class="transfer-stage-head">
-            <div>
-              <div class="section-label-small">Передача</div>
-              <h3>Активная ссылка</h3>
-              <div class="muted">Ссылка действует 24 часа или до первой загрузки.</div>
-            </div>
-            <div class="link-actions">
-              <button id="createLinkBtn" class="btn">Создать ссылку</button>
-              <button id="shareLinkBtn" class="btn btn-secondary hidden" type="button" aria-expanded="false">Поделиться</button>
-              <button id="copyLinkBtn" class="btn btn-secondary hidden">Копировать</button>
-              <button id="deleteLinkBtn" class="btn btn-secondary hidden">Удалить</button>
-            </div>
-          </div>
-          <div id="linkBox" class="link-box hidden"></div>
-          <div class="transfer-stage-body">
-            <div id="linkQr" class="qr-box hidden"></div>
-            <div id="linkMeta" class="link-meta hidden">
-              <div>Действует до: <span id="linkExpiry"></span></div>
-              <div>Осталось: <span id="linkCountdown"></span></div>
-            </div>
-          </div>
-          <div id="shareMenu" class="share-menu hidden"></div>
-        </div>
-        <aside class="transfer-rail">
-          <div class="transfer-rail-head">
-            <div class="section-label-small">Ссылки</div>
-            <h3>Подготовленные ссылки</h3>
-            <div class="muted">Можно хранить несколько ссылок и быстро переключаться между ними.</div>
-          </div>
-          <div id="linkList" class="link-list hidden"></div>
-          <div class="link-list-placeholder">Список появится после создания первой ссылки.</div>
-        </aside>
-      </section>
-      <section id="adminPanel" class="admin-panel hidden">
-        <div class="card-header">
+    <section class="section section-wide portal-stage">
+      <section id="loginCard" class="vault-panel login-panel">
+        <div class="panel-head panel-head-compact">
           <div>
-            <h3>Управление</h3>
-            <div class="muted">Учетные записи для входа и параметры доступа.</div>
-          </div>
-          <div class="header-actions">
-            <button id="adminRefreshBtn" class="btn btn-secondary" type="button">Обновить учетные записи</button>
+            <p class="eyebrow">Доступ</p>
+            <h2>Вход</h2>
+            <p class="muted">Используйте учётные данные и при необходимости код подтверждения.</p>
           </div>
         </div>
-        <div class="admin-create">
+
+        <div class="login-form-grid">
           <label class="field">
-            <span>Новый логин</span>
-            <input id="adminCreateLogin" type="text" autocomplete="off" />
+            <span>Логин</span>
+            <input id="login" type="text" autocomplete="username" />
           </label>
           <label class="field">
             <span>Пароль</span>
-            <input id="adminCreatePassword" type="password" autocomplete="new-password" />
+            <input id="password" type="password" autocomplete="current-password" />
           </label>
-          <button id="adminCreateBtn" class="btn" type="button">Создать учетную запись</button>
+          <label class="field field-full">
+            <span>Код</span>
+            <input id="totp" type="text" inputmode="numeric" autocomplete="one-time-code" />
+          </label>
         </div>
-        <div class="table-shell">
-          <table class="table admin-table">
-            <thead>
-              <tr>
-                <th>Логин</th>
-                <th>Создан</th>
-                <th>TOTP</th>
-                <th>Новый пароль</th>
-                <th>Действия</th>
-              </tr>
-            </thead>
-            <tbody id="adminUserRows"></tbody>
-          </table>
+
+        <div class="actions actions-start">
+          <button id="loginBtn" class="btn" type="button" onclick="window.portalLogin && window.portalLogin()">Вход</button>
         </div>
-        <div id="adminStatus" class="status"></div>
+
+        <div id="loginStatus" class="status"></div>
       </section>
-      <div class="table-shell">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Имя</th>
-              <th>Размер</th>
-              <th>Загружено</th>
-              <th>Удаление</th>
-              <th>Действия</th>
-            </tr>
-          </thead>
-          <tbody id="fileRows"></tbody>
-        </table>
-      </div>
-      <div id="portalStatus" class="status"></div>
-      <section class="security">
-        <details>
-          <summary>Подробнее о безопасности</summary>
-          <div class="security-body">
-            <h3>Безопасность</h3>
-            <div class="security-block">
-              <div class="security-title">Как работает защита передачи файлов:</div>
-              <ul>
-                <li>Файлы хранятся в зашифрованном виде и доступны только в рамках этого портала.</li>
-                <li>Каждая ссылка для передачи является одноразовой и действует ограниченное время.</li>
-                <li>Получение файла возможно только один раз.</li>
-                <li>После успешного получения файл автоматически удаляется с сервера через 10 минут без возможности восстановления.</li>
-              </ul>
+
+      <section id="portalCard" class="portal-dashboard hidden">
+        <section class="vault-panel portal-topbar">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Кабинет</p>
+              <h2>Список</h2>
+              <p class="muted">Здесь доступны ссылки, получение файлов и параметры входа.</p>
             </div>
-            <div class="security-block">
-              <div class="security-title">Важно учитывать:</div>
-              <ul>
-                <li>После получения файл сохраняется на устройство, с которого выполнялось получение.</li>
-                <li>Безопасность хранения файла на конечном устройстве зависит от его настроек и защиты.</li>
-                <li>Рекомендуется использовать доверенные и защищённые устройства.</li>
-              </ul>
+            <div class="header-actions">
+              <button id="refreshBtn" class="btn btn-secondary" type="button">Обновить</button>
+              <button id="logoutBtn" class="btn btn-secondary" type="button">Выйти</button>
             </div>
-            <p>Сервис предназначен для минимизации рисков при передаче данных и исключает длительное хранение файлов на сервере.</p>
           </div>
-        </details>
+        </section>
+
+        <section class="vault-panel access-panel">
+          <div class="link-panel">
+            <div>
+              <div class="link-title">Доступ</div>
+              <div id="totpDescription" class="muted">Включите код через приложение-аутентификатор.</div>
+              <div id="totpState" class="tiny-status">TOTP не включен</div>
+            </div>
+            <div class="link-actions">
+              <button id="totpStartBtn" class="btn btn-secondary" type="button">Включить TOTP</button>
+            </div>
+          </div>
+
+          <div id="totpBox" class="link-box hidden"></div>
+
+          <div class="totp-stage">
+            <div id="totpQr" class="qr-box hidden"></div>
+            <div id="totpConfirm" class="totp-confirm hidden">
+              <label class="field">
+                <span>Код</span>
+                <input id="totpCodeInput" type="text" inputmode="numeric" autocomplete="one-time-code" />
+              </label>
+              <button id="totpConfirmBtn" class="btn" type="button">Подтвердить</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="vault-panel link-panel">
+          <div>
+            <div class="link-title">Связь</div>
+            <div class="muted">Привязка Telegram будет доступна позже.</div>
+          </div>
+          <div class="link-actions">
+            <button class="btn btn-secondary" type="button" disabled>Привязать Telegram</button>
+          </div>
+        </section>
+
+        <section class="transfer-shell">
+          <article class="vault-panel transfer-stage">
+            <div class="transfer-stage-head">
+              <div>
+                <div class="section-label-small">Передача</div>
+                <h3>Активная ссылка</h3>
+                <div class="muted">Ссылка действует 24 часа или до первой загрузки.</div>
+              </div>
+              <div class="link-actions">
+                <button id="createLinkBtn" class="btn" type="button">Создать ссылку</button>
+                <button id="shareLinkBtn" class="btn btn-secondary hidden" type="button" aria-expanded="false">Поделиться</button>
+                <button id="copyLinkBtn" class="btn btn-secondary hidden" type="button">Копировать</button>
+                <button id="deleteLinkBtn" class="btn btn-secondary hidden" type="button">Удалить</button>
+              </div>
+            </div>
+
+            <div id="linkBox" class="link-box hidden"></div>
+
+            <div class="transfer-stage-body">
+              <div id="linkQr" class="qr-box hidden"></div>
+              <div id="linkMeta" class="link-meta hidden">
+                <div>Действует до: <span id="linkExpiry"></span></div>
+                <div>Осталось: <span id="linkCountdown"></span></div>
+              </div>
+            </div>
+
+            <div id="shareMenu" class="share-menu hidden"></div>
+          </article>
+
+          <aside class="vault-panel transfer-rail">
+            <div class="transfer-rail-head">
+              <div class="section-label-small">Ссылки</div>
+              <h3>Подготовленные ссылки</h3>
+              <div class="muted">Можно хранить несколько ссылок и быстро переключаться между ними.</div>
+            </div>
+            <div id="linkList" class="link-list hidden"></div>
+            <div class="link-list-placeholder">Список появится после создания первой ссылки.</div>
+          </aside>
+        </section>
+
+        <section id="adminPanel" class="vault-panel admin-panel hidden">
+          <div class="card-header">
+            <div>
+              <div class="section-label-small">Управление</div>
+              <h3>Учётные записи</h3>
+              <div class="muted">Параметры доступа и создание новых записей.</div>
+            </div>
+            <div class="header-actions">
+              <button id="adminRefreshBtn" class="btn btn-secondary" type="button">Обновить</button>
+            </div>
+          </div>
+
+          <div class="admin-create">
+            <label class="field">
+              <span>Новый логин</span>
+              <input id="adminCreateLogin" type="text" autocomplete="off" />
+            </label>
+            <label class="field">
+              <span>Пароль</span>
+              <input id="adminCreatePassword" type="password" autocomplete="new-password" />
+            </label>
+            <button id="adminCreateBtn" class="btn" type="button">Создать учётную запись</button>
+          </div>
+
+          <div class="table-shell">
+            <table class="table admin-table">
+              <thead>
+                <tr>
+                  <th>Логин</th>
+                  <th>Создан</th>
+                  <th>TOTP</th>
+                  <th>Новый пароль</th>
+                  <th>Действия</th>
+                </tr>
+              </thead>
+              <tbody id="adminUserRows"></tbody>
+            </table>
+          </div>
+
+          <div id="adminStatus" class="status"></div>
+        </section>
+
+        <section class="vault-panel files-panel">
+          <div class="panel-head panel-head-compact">
+            <div>
+              <div class="section-label-small">Файлы</div>
+              <h3>Подготовленные файлы</h3>
+              <div class="muted">Список обновляется автоматически после создания ссылки, загрузки и получения.</div>
+            </div>
+          </div>
+
+          <div class="table-shell">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Имя</th>
+                  <th>Размер</th>
+                  <th>Загружено</th>
+                  <th>Удаление</th>
+                  <th>Действия</th>
+                </tr>
+              </thead>
+              <tbody id="fileRows"></tbody>
+            </table>
+          </div>
+
+          <div id="portalStatus" class="status"></div>
+        </section>
+
+        <section class="vault-panel security-panel security">
+          <details>
+            <summary>Подробнее о безопасности</summary>
+            <div class="security-body">
+              <h3>Безопасность</h3>
+              <div class="security-block">
+                <div class="security-title">Как работает защита передачи файлов:</div>
+                <ul>
+                  <li>Файлы хранятся в зашифрованном виде и доступны только в рамках этого портала.</li>
+                  <li>Каждая ссылка для передачи является одноразовой и действует ограниченное время.</li>
+                  <li>Получение файла возможно только один раз.</li>
+                  <li>После успешного получения файл автоматически удаляется с сервера через 10 минут без возможности восстановления.</li>
+                </ul>
+              </div>
+              <div class="security-block">
+                <div class="security-title">Важно учитывать:</div>
+                <ul>
+                  <li>После получения файл сохраняется на устройство, с которого выполнялось получение.</li>
+                  <li>Безопасность хранения файла на конечном устройстве зависит от его настроек и защиты.</li>
+                  <li>Рекомендуется использовать доверенные и защищённые устройства.</li>
+                </ul>
+              </div>
+              <p>Сервис предназначен для минимизации рисков при передаче данных и исключает длительное хранение файлов на сервере.</p>
+            </div>
+          </details>
+        </section>
       </section>
     </section>
   </main>
 
   <script src="/theme.js?v=20260326-5"></script>
-  <script src="/portal.js?v=20260412-1"></script>
+  <script src="/portal.js?v=20260326-15"></script>
 </body>
 </html>

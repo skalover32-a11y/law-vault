@@ -3,43 +3,92 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Портал — Загрузка</title>
-  <link rel="stylesheet" href="/styles.css?v=20260326-10" />
+  <title>Портал — Передача</title>
+  <link rel="stylesheet" href="/styles.css?v=20260615-1" />
 </head>
-<body>
-  <main class="page">
-    <header class="hero">
-      <div class="hero-brand">Портал</div>
-      <button id="themeToggle" class="theme-toggle" type="button" aria-label="Переключить оформление">
-        <span class="theme-toggle-caption">Оформление</span>
-        <span id="themeToggleValue" class="theme-toggle-value">Светлое</span>
-      </button>
-      <h1>Передача файла</h1>
-      <p class="muted">Откройте ссылку для передачи.</p>
+<body class="vault-upload-page">
+  <main class="vault-app">
+    <header class="site-header" aria-label="Навигация">
+      <a class="brand" href="/">
+        <span>Portal</span>
+        <small>secure relay</small>
+      </a>
+      <nav class="main-nav" aria-label="Разделы">
+        <a href="/" aria-current="page">Передача</a>
+        <a href="/portal">Получение</a>
+      </nav>
+      <div class="top-actions">
+        <button id="themeToggle" class="theme-toggle" type="button" aria-label="Переключить оформление">
+          <span class="theme-toggle-caption">Оформление</span>
+          <span id="themeToggleValue" class="theme-toggle-value">Светлое</span>
+        </button>
+      </div>
     </header>
 
-    <section class="card">
-      <div id="tokenBanner" class="banner hidden"></div>
-
-      <div id="dropZone" class="dropzone">
-        <div class="dropzone-inner">
-          <div class="dropzone-title">Перетащите файл сюда</div>
-          <div class="dropzone-sub">или выберите файл вручную</div>
-          <input id="fileInput" type="file" multiple />
-          <div id="fileCount" class="file-count">Файлы не выбраны</div>
+    <section class="hero upload-hero" aria-labelledby="send-title">
+      <div class="hero-copy">
+        <p class="eyebrow">Передача</p>
+        <h1 id="send-title">Безопасная<br />передача<br />файлов.</h1>
+        <p>Рабочая ссылка уже открыта. Добавьте один или несколько файлов и завершите передачу.</p>
+      </div>
+      <div class="stationery" aria-hidden="true">
+        <div class="paper paper-back"></div>
+        <div class="paper paper-main">
+          <span class="emboss">Portal<br />Secure</span>
+          <span class="paper-line line-1"></span>
+          <span class="paper-line line-2"></span>
+          <span class="paper-line line-3"></span>
         </div>
+        <div class="paper paper-card">
+          <span>Portal</span>
+          <small>secure relay</small>
+        </div>
+        <div class="paper paper-tall"></div>
+        <div class="brand-seal hero-seal"><span>P</span></div>
       </div>
+    </section>
 
-      <div class="progress" id="progressWrap">
-        <div class="progress-bar" id="progressBar"></div>
-      </div>
+    <section class="section section-wide workspace-section">
+      <article class="vault-panel upload-panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Загрузка</p>
+            <h2>Добавьте файлы</h2>
+            <p class="muted">Файлы будут сохранены и станут доступны в кабинете для одного получения.</p>
+          </div>
+          <div class="panel-note">Ссылка остаётся рабочей до первой успешной загрузки или до окончания срока.</div>
+        </div>
 
-      <div class="actions">
-        <button id="uploadBtn" class="btn" disabled>Загрузка</button>
-      </div>
+        <div id="tokenBanner" class="banner hidden"></div>
 
-      <div id="status" class="status"></div>
-      <div id="fileList" class="file-list"></div>
+        <div class="upload-grid">
+          <div id="dropZone" class="dropzone">
+            <div class="dropzone-inner">
+              <div class="dropzone-title">Перетащите файлы сюда</div>
+              <div class="dropzone-sub">или выберите их вручную</div>
+              <input id="fileInput" type="file" multiple />
+            </div>
+          </div>
+
+          <aside class="upload-sidebar">
+            <div class="upload-rail">
+              <div class="section-label-small">Список</div>
+              <div id="fileCount" class="file-count">Файлы не выбраны</div>
+              <div id="fileList" class="file-list"></div>
+            </div>
+          </aside>
+        </div>
+
+        <div class="progress hidden" id="progressWrap">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <div class="actions">
+          <button id="uploadBtn" class="btn" disabled>Загрузка</button>
+        </div>
+
+        <div id="status" class="status"></div>
+      </article>
     </section>
   </main>
 
